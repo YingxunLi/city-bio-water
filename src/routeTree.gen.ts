@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WasserRouteImport } from './routes/wasser'
 import { Route as StadtRouteImport } from './routes/stadt'
+import { Route as BiodiversitaetRouteImport } from './routes/biodiversitaet'
 import { Route as IndexRouteImport } from './routes/index'
 
 const WasserRoute = WasserRouteImport.update({
@@ -23,6 +24,11 @@ const StadtRoute = StadtRouteImport.update({
   path: '/stadt',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BiodiversitaetRoute = BiodiversitaetRouteImport.update({
+  id: '/biodiversitaet',
+  path: '/biodiversitaet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,30 +37,34 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/biodiversitaet': typeof BiodiversitaetRoute
   '/stadt': typeof StadtRoute
   '/wasser': typeof WasserRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/biodiversitaet': typeof BiodiversitaetRoute
   '/stadt': typeof StadtRoute
   '/wasser': typeof WasserRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/biodiversitaet': typeof BiodiversitaetRoute
   '/stadt': typeof StadtRoute
   '/wasser': typeof WasserRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/stadt' | '/wasser'
+  fullPaths: '/' | '/biodiversitaet' | '/stadt' | '/wasser'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/stadt' | '/wasser'
-  id: '__root__' | '/' | '/stadt' | '/wasser'
+  to: '/' | '/biodiversitaet' | '/stadt' | '/wasser'
+  id: '__root__' | '/' | '/biodiversitaet' | '/stadt' | '/wasser'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BiodiversitaetRoute: typeof BiodiversitaetRoute
   StadtRoute: typeof StadtRoute
   WasserRoute: typeof WasserRoute
 }
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StadtRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/biodiversitaet': {
+      id: '/biodiversitaet'
+      path: '/biodiversitaet'
+      fullPath: '/biodiversitaet'
+      preLoaderRoute: typeof BiodiversitaetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BiodiversitaetRoute: BiodiversitaetRoute,
   StadtRoute: StadtRoute,
   WasserRoute: WasserRoute,
 }
