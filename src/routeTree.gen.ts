@@ -9,8 +9,26 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WasserRouteImport } from './routes/wasser'
+import { Route as StadtRouteImport } from './routes/stadt'
+import { Route as BiodiversitaetRouteImport } from './routes/biodiversitaet'
 import { Route as IndexRouteImport } from './routes/index'
 
+const WasserRoute = WasserRouteImport.update({
+  id: '/wasser',
+  path: '/wasser',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StadtRoute = StadtRouteImport.update({
+  id: '/stadt',
+  path: '/stadt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BiodiversitaetRoute = BiodiversitaetRouteImport.update({
+  id: '/biodiversitaet',
+  path: '/biodiversitaet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +37,61 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/biodiversitaet': typeof BiodiversitaetRoute
+  '/stadt': typeof StadtRoute
+  '/wasser': typeof WasserRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/biodiversitaet': typeof BiodiversitaetRoute
+  '/stadt': typeof StadtRoute
+  '/wasser': typeof WasserRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/biodiversitaet': typeof BiodiversitaetRoute
+  '/stadt': typeof StadtRoute
+  '/wasser': typeof WasserRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/biodiversitaet' | '/stadt' | '/wasser'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/biodiversitaet' | '/stadt' | '/wasser'
+  id: '__root__' | '/' | '/biodiversitaet' | '/stadt' | '/wasser'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BiodiversitaetRoute: typeof BiodiversitaetRoute
+  StadtRoute: typeof StadtRoute
+  WasserRoute: typeof WasserRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/wasser': {
+      id: '/wasser'
+      path: '/wasser'
+      fullPath: '/wasser'
+      preLoaderRoute: typeof WasserRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stadt': {
+      id: '/stadt'
+      path: '/stadt'
+      fullPath: '/stadt'
+      preLoaderRoute: typeof StadtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/biodiversitaet': {
+      id: '/biodiversitaet'
+      path: '/biodiversitaet'
+      fullPath: '/biodiversitaet'
+      preLoaderRoute: typeof BiodiversitaetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,16 +104,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BiodiversitaetRoute: BiodiversitaetRoute,
+  StadtRoute: StadtRoute,
+  WasserRoute: WasserRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
