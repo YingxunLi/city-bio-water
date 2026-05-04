@@ -220,11 +220,88 @@ function WasserPage() {
   );
 }
 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend as RLegend,
+} from "recharts";
+
 function MetricLines({
   data,
 }: {
   data: { label: string; fu: number; ph: number; tr: number }[];
 }) {
-  const Recharts = require("recharts");
-  return null as never;
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <LineChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+        <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" vertical={false} />
+        <XAxis
+          dataKey="label"
+          tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+          axisLine={false}
+          tickLine={false}
+          minTickGap={20}
+        />
+        <YAxis
+          tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+          axisLine={false}
+          tickLine={false}
+          width={32}
+        />
+        <Tooltip
+          contentStyle={{
+            background: "var(--popover)",
+            border: "1px solid var(--border)",
+            borderRadius: 12,
+            fontSize: 12,
+          }}
+        />
+        <RLegend
+          wrapperStyle={{ fontSize: 11 }}
+          iconType="circle"
+          formatter={(v) => (v === "fu" ? "FU" : v === "ph" ? "pH" : "Transparenz (m)")}
+        />
+        <Line type="monotone" dataKey="fu" stroke="#243285" strokeWidth={2} dot={false} />
+        <Line type="monotone" dataKey="ph" stroke="#6c8ad6" strokeWidth={2} dot={false} />
+        <Line type="monotone" dataKey="tr" stroke="#00A36F" strokeWidth={2} dot={false} />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+function FuLegend() {
+  return (
+    <div className="mt-4">
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">
+        {de.wasser.fuLegend}
+      </div>
+      <div className="flex h-3 rounded-full overflow-hidden border border-border">
+        {FU_COLORS.map((c, i) => (
+          <div
+            key={i}
+            className="flex-1"
+            style={{ background: c }}
+            title={`FU ${i + 1}`}
+          />
+        ))}
+      </div>
+      <div className="flex justify-between text-[10px] text-muted-foreground mt-1 stat-number">
+        <span>1 · klar blau</span>
+        <span>21 · trüb braun</span>
+      </div>
+    </div>
+  );
+}
+
+function Empty() {
+  return (
+    <div className="text-sm text-muted-foreground text-center py-10">
+      {de.common.noData}
+    </div>
+  );
 }
