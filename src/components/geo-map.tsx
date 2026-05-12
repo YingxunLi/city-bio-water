@@ -26,8 +26,8 @@ export function GeoMap(props: Props) {
     <ClientOnly
       fallback={
         <div
-          className="w-full rounded-2xl bg-muted animate-pulse"
-          style={{ height: props.height ?? 380 }}
+          className={props.flush ? "w-full h-full bg-muted animate-pulse" : "w-full rounded-2xl bg-muted animate-pulse"}
+          style={{ height: props.flush ? "100%" : (props.height ?? 380) }}
         />
       }
     >
