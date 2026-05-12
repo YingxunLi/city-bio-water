@@ -18,17 +18,21 @@ const ranges: { v: TimeRange; label: string }[] = [
   { v: 9999, label: de.filters.all },
 ];
 
-export function FilterBar() {
+export function FilterBar({ compact = false }: { compact?: boolean }) {
   const { city, setCity, cities, radiusKm, setRadiusKm, range, setRange } = useFilters();
 
+  const containerCls = compact
+    ? "flex flex-col gap-3"
+    : "surface-card p-4 md:p-5 flex flex-col gap-4 md:flex-row md:items-center md:gap-6";
+
   return (
-    <div className="surface-card p-4 md:p-5 flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
+    <div className={containerCls}>
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <div className="size-9 rounded-full bg-muted flex items-center justify-center shrink-0">
           <MapPin className="size-4 text-muted-foreground" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
             {de.filters.city}
           </div>
           <Select value={city.id} onValueChange={setCity}>
@@ -52,10 +56,10 @@ export function FilterBar() {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline justify-between">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
               {de.filters.radius}
             </div>
-            <div className="text-sm font-semibold stat-number">{radiusKm} km</div>
+            <div className="text-xs font-semibold stat-number">{radiusKm} km</div>
           </div>
           <Slider
             value={[radiusKm]}
@@ -73,7 +77,7 @@ export function FilterBar() {
           <Clock className="size-4 text-muted-foreground" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
             {de.filters.timeRange}
           </div>
           <div className="flex flex-wrap gap-1 mt-1">
@@ -81,7 +85,7 @@ export function FilterBar() {
               <button
                 key={r.v}
                 onClick={() => setRange(r.v)}
-                className={`text-xs px-2.5 py-1 rounded-full transition-all ${
+                className={`text-[11px] px-2 py-0.5 rounded-full transition-all ${
                   range === r.v
                     ? "bg-foreground text-background"
                     : "bg-muted text-muted-foreground hover:bg-accent"

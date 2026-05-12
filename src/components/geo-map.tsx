@@ -17,6 +17,8 @@ type Props = {
   /** When true, render a heat-like density layer using grouped circles. */
   heat?: boolean;
   baseColor?: string;
+  /** Drop the rounded border so the map can sit flush as a background. */
+  flush?: boolean;
 };
 
 export function GeoMap(props: Props) {
