@@ -4,11 +4,11 @@ import { useFilters } from "@/lib/filter-context";
 import { de } from "@/lib/i18n";
 import { FilterBar } from "@/components/filter-bar";
 import { GeoMap, type MapPoint } from "@/components/geo-map";
-import { SectionHeader, StatCard, PanelCard, ViewToggle } from "@/components/ui-bits";
+import { MapDashboard, PanelTabs, FloatingCard } from "@/components/map-dashboard";
+import { ViewToggle } from "@/components/ui-bits";
 import { TimeSeries, bucketByDay } from "@/components/time-series";
 import { BoxRow, RadarBox, computeBox } from "@/components/box-charts";
 import { STADT_TYPES, nestColor } from "@/lib/mock-data";
-import { TreePine } from "lucide-react";
 
 export const Route = createFileRoute("/stadt")({
   head: () => ({
@@ -22,11 +22,13 @@ export const Route = createFileRoute("/stadt")({
 
 const STADT = "#F0A08C";
 
+type Tab = "stats" | "verteilung" | "typen" | "verlauf";
+
 function StadtPage() {
   const { data, range } = useFilters();
   const [mapMode, setMapMode] = useState<"points" | "heat">("points");
   const [boxMode, setBoxMode] = useState<"box" | "radar">("radar");
-  const [typeAxis, setTypeAxis] = useState<"count" | "score">("count");
+  const [tab, setTab] = useState<Tab>("stats");
 
   const points: MapPoint[] = data.stadt.map((p) => ({
     id: p.id,
@@ -38,7 +40,6 @@ function StadtPage() {
   }));
 
   const ts = bucketByDay(data.stadt, range);
-
   const avgNest = data.stadt.length
     ? Math.round(data.stadt.reduce((a, b) => a + b.nest, 0) / data.stadt.length)
     : 0;
@@ -54,195 +55,174 @@ function StadtPage() {
     ];
   }, [data.stadt]);
 
-  const byType = useMemo(() => {
-    return STADT_TYPES.map((t) => {
-      const subset = data.stadt.filter((p) => p.type === t);
-      const avg = subset.length
-        ? subset.reduce((a, b) => a + b.nest, 0) / subset.length
-        : 0;
-      return { type: t, count: subset.length, score: Math.round(avg) };
-    });
-  }, [data.stadt]);
-
+  const byType = useMemo(
+    () =>
+      STADT_TYPES.map((t) => {
+        const subset = data.stadt.filter((p) => p.type === t);
+        const avg = subset.length ? subset.reduce((a, b) => a + b.nest, 0) / subset.length : 0;
+        return { type: t, count: subset.length, score: Math.round(avg) };
+      }),
+    [data.stadt],
+  );
   const maxCount = Math.max(1, ...byType.map((b) => b.count));
-  const maxScore = 100;
 
   return (
-    <div className="space-y-6">
-      <SectionHeader
-        eyebrow="Greenspace Hack"
-        accent={STADT}
-        title={de.stadt.title}
-        subtitle={de.stadt.subtitle}
-        right={
-          <div
-            className="hidden md:flex size-12 rounded-2xl items-center justify-center"
-            style={{ background: "var(--stadt-soft)" }}
-          >
-            <TreePine className="size-5" style={{ color: STADT }} />
-          </div>
-        }
-      />
-      <FilterBar />
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label={de.common.observations} value={data.stadt.length} accent={STADT} />
-        <StatCard label={`Ø ${de.stadt.nest}`} value={avgNest || "—"} accent={STADT} />
-        <StatCard
-          label="Beste Fläche"
-          value={data.stadt.length ? Math.max(...data.stadt.map((d) => d.nest)) : "—"}
-          accent={STADT}
-        />
-        <StatCard
-          label="Flächentypen"
-          value={new Set(data.stadt.map((d) => d.type)).size}
-          accent={STADT}
-        />
-      </div>
-
-      <PanelCard
-        title={de.common.map}
-        accent={STADT}
-        hint="Farbe = NEST Score"
-        right={
+    <MapDashboard
+      map={<GeoMap points={points} heat={mapMode === "heat"} baseColor={STADT} flush />}
+      overlay={
+        <FloatingCard>
+          <FilterBar compact />
+        </FloatingCard>
+      }
+      mapControls={
+        <FloatingCard className="!p-1">
           <ViewToggle
             value={mapMode}
             onChange={setMapMode}
             options={[
-              { v: "points", label: de.common.map },
+              { v: "points", label: de.stadt.nest },
               { v: "heat", label: de.common.heatmap },
             ]}
           />
-        }
-      >
-        <GeoMap points={points} heat={mapMode === "heat"} baseColor={STADT} height={440} />
-        <NestLegend />
-      </PanelCard>
-
-      <PanelCard
-        title="Score-Kategorien"
-        accent={STADT}
-        hint={
-          boxMode === "radar"
-            ? "Median + IQR-Ring je Kategorie."
-            : "Boxplot je Kategorie (0–100)."
-        }
-        right={
-          <ViewToggle
-            value={boxMode}
-            onChange={setBoxMode}
+        </FloatingCard>
+      }
+      mapLegend={<NestLegendVertical />}
+      panel={
+        <>
+          <PanelTabs
+            value={tab}
+            onChange={setTab}
             options={[
-              { v: "radar", label: de.common.radarView },
-              { v: "box", label: de.common.boxplotView },
+              { v: "stats", label: "Statistik" },
+              { v: "verteilung", label: "Score-Kategorien" },
+              { v: "typen", label: de.stadt.sources },
+              { v: "verlauf", label: de.common.overTime },
             ]}
+            right={
+              tab === "verteilung" ? (
+                <ViewToggle
+                  value={boxMode}
+                  onChange={setBoxMode}
+                  options={[
+                    { v: "radar", label: de.common.radarView },
+                    { v: "box", label: de.common.boxplotView },
+                  ]}
+                />
+              ) : null
+            }
           />
-        }
-      >
-        {catMetrics.length === 0 ? (
-          <Empty />
-        ) : boxMode === "radar" ? (
-          <div className="flex justify-center">
-            <RadarBox
-              stats={catMetrics.map((m) => computeBox(m.values, m.key))}
-              domain={[0, 100]}
-              color={STADT}
-              size={360}
-            />
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {catMetrics.map((m) => (
-              <BoxRow
-                key={m.key}
-                stats={computeBox(m.values, m.key)}
-                domain={[0, 100]}
-                color={STADT}
+
+          {tab === "stats" && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Stat label={de.common.observations} value={data.stadt.length} accent={STADT} />
+              <Stat label={`Ø ${de.stadt.nest}`} value={avgNest || "—"} accent={STADT} />
+              <Stat
+                label="Beste Fläche"
+                value={data.stadt.length ? Math.max(...data.stadt.map((d) => d.nest)) : "—"}
+                accent={STADT}
               />
-            ))}
-          </div>
-        )}
-      </PanelCard>
+              <Stat
+                label="Flächentypen"
+                value={new Set(data.stadt.map((d) => d.type)).size}
+                accent={STADT}
+              />
+            </div>
+          )}
 
-      <PanelCard
-        title={de.stadt.sources}
-        accent={STADT}
-        hint="Anzahl gemeldeter Flächen je Typ und durchschnittlicher Score"
-        right={
-          <ViewToggle
-            value={typeAxis}
-            onChange={setTypeAxis}
-            options={[
-              { v: "count", label: de.stadt.count },
-              { v: "score", label: de.stadt.score },
-            ]}
-          />
-        }
-      >
-        <div className="space-y-2.5">
-          {byType.map((b) => {
-            const v = typeAxis === "count" ? b.count : b.score;
-            const max = typeAxis === "count" ? maxCount : maxScore;
-            const pct = (v / max) * 100;
-            return (
-              <div
-                key={b.type}
-                className="grid grid-cols-[180px_1fr_60px] items-center gap-3 group"
-                title={`${b.type}: ${b.count} Flächen, Ø Score ${b.score}`}
-              >
-                <div className="text-xs truncate">{b.type}</div>
-                <div className="h-6 bg-muted rounded-md overflow-hidden relative">
-                  <div
-                    className="h-full rounded-md transition-all"
-                    style={{
-                      width: `${pct}%`,
-                      background: `color-mix(in oklab, ${STADT} ${
-                        typeAxis === "score" ? 30 + (b.score / 100) * 60 : 60
-                      }%, white)`,
-                    }}
-                  />
-                </div>
-                <div className="text-[11px] text-muted-foreground stat-number text-right">
-                  {typeAxis === "count" ? b.count : b.score || "—"}
-                </div>
+          {tab === "verteilung" &&
+            (catMetrics.length === 0 ? (
+              <Empty />
+            ) : boxMode === "radar" ? (
+              <div className="flex justify-center">
+                <RadarBox
+                  stats={catMetrics.map((m) => computeBox(m.values, m.key))}
+                  domain={[0, 100]}
+                  color={STADT}
+                  size={260}
+                />
               </div>
-            );
-          })}
-        </div>
-      </PanelCard>
+            ) : (
+              <div className="space-y-2.5">
+                {catMetrics.map((m) => (
+                  <BoxRow key={m.key} stats={computeBox(m.values, m.key)} domain={[0, 100]} color={STADT} />
+                ))}
+              </div>
+            ))}
 
-      <PanelCard title="Beobachtungen pro Zeit" accent={STADT}>
-        <TimeSeries data={ts} color={STADT} />
-      </PanelCard>
+          {tab === "typen" && (
+            <div className="space-y-2">
+              {byType.map((b) => (
+                <div
+                  key={b.type}
+                  className="grid grid-cols-[160px_1fr_60px] items-center gap-3"
+                  title={`${b.type}: ${b.count} Flächen, Ø Score ${b.score}`}
+                >
+                  <div className="text-xs truncate">{b.type}</div>
+                  <div className="h-5 bg-muted rounded-md overflow-hidden">
+                    <div
+                      className="h-full rounded-md transition-all"
+                      style={{
+                        width: `${(b.count / maxCount) * 100}%`,
+                        background: `color-mix(in oklab, ${STADT} ${30 + (b.score / 100) * 60}%, white)`,
+                      }}
+                    />
+                  </div>
+                  <div className="text-[11px] text-muted-foreground stat-number text-right">
+                    {b.count} · {b.score || "—"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {tab === "verlauf" && <TimeSeries data={ts} color={STADT} height={200} />}
+        </>
+      }
+    />
+  );
+}
+
+function Stat({ label, value, accent }: { label: string; value: React.ReactNode; accent: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-3 relative overflow-hidden">
+      <div
+        className="absolute -top-6 -right-6 size-20 rounded-full opacity-10"
+        style={{ background: accent }}
+      />
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+        {label}
+      </div>
+      <div className="mt-1 text-xl md:text-2xl font-semibold stat-number">{value}</div>
     </div>
   );
 }
 
-function NestLegend() {
-  const stops = [10, 30, 50, 70, 90];
+function NestLegendVertical() {
   return (
-    <div className="mt-4">
-      <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">
-        NEST Score
+    <div
+      className="rounded-2xl border border-border p-2 flex items-stretch gap-2"
+      style={{
+        background: "color-mix(in oklab, white 88%, transparent)",
+        backdropFilter: "saturate(180%) blur(20px)",
+        boxShadow: "var(--shadow-float)",
+      }}
+      title="NEST Score 0–100"
+    >
+      <div className="flex flex-col text-[9px] text-muted-foreground stat-number justify-between py-0.5 leading-none">
+        <span>100</span>
+        <span>50</span>
+        <span>0</span>
       </div>
-      <div className="flex h-3 rounded-full overflow-hidden border border-border">
-        {Array.from({ length: 40 }, (_, i) => {
-          const v = (i / 39) * 100;
+      <div className="w-2 rounded-full overflow-hidden flex flex-col">
+        {Array.from({ length: 20 }, (_, i) => {
+          const v = ((19 - i) / 19) * 100;
           return <div key={i} className="flex-1" style={{ background: nestColor(v) }} />;
         })}
-      </div>
-      <div className="flex justify-between text-[10px] text-muted-foreground mt-1 stat-number">
-        {stops.map((s) => (
-          <span key={s}>{s}</span>
-        ))}
       </div>
     </div>
   );
 }
 
 function Empty() {
-  return (
-    <div className="text-sm text-muted-foreground text-center py-10">
-      {de.common.noData}
-    </div>
-  );
+  return <div className="text-sm text-muted-foreground text-center py-8">{de.common.noData}</div>;
 }
