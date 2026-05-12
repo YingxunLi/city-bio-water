@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { de } from "@/lib/i18n";
 import { useFilters } from "@/lib/filter-context";
+import { ClientOnly } from "@/components/client-only";
 
 const items = [
   { to: "/", label: de.nav.home, accent: "var(--foreground)" },
@@ -45,8 +46,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="hidden lg:flex items-center gap-1.5 text-[11px] text-muted-foreground ml-2 shrink-0">
           <span className="size-1.5 rounded-full bg-[var(--bio)] animate-pulse" />
-          {de.common.liveData} ·{" "}
-          {lastUpdated.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+          {de.common.liveData}
+          <ClientOnly fallback={null}>
+            {() => (
+              <span>
+                {" "}· {lastUpdated.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+          </ClientOnly>
         </div>
       </header>
       <main className="flex-1 min-h-0 md:overflow-hidden">{children}</main>
