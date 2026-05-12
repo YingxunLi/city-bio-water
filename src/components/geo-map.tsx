@@ -36,7 +36,7 @@ export function GeoMap(props: Props) {
   );
 }
 
-function GeoMapInner({ points, height = 380, heat = false, baseColor }: Props) {
+function GeoMapInner({ points, height = 380, heat = false, baseColor, flush = false }: Props) {
   const { city, radiusKm } = useFilters();
   const RL = useClientModule(() => import("react-leaflet"));
   const L = useClientModule(() => import("leaflet"));
@@ -72,7 +72,10 @@ function GeoMapInner({ points, height = 380, heat = false, baseColor }: Props) {
   const maxN = Math.max(1, ...heatGroups.map((g) => g.n));
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border" style={{ height }}>
+    <div
+      className={flush ? "w-full h-full" : "overflow-hidden rounded-2xl border border-border"}
+      style={{ height: flush ? "100%" : height }}
+    >
       <MapContainer
         key={`${city.id}-${heat}`}
         center={[city.lat, city.lon]}
