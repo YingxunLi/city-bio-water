@@ -167,7 +167,6 @@
 .leaflet-container {
   background: var(--muted);
   font-family: var(--font-sans);
-  border-radius: var(--radius-2xl);
 }
 .leaflet-control-attribution {
   font-size: 10px !important;

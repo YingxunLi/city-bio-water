@@ -17,6 +17,8 @@ type Props = {
   /** When true, render a heat-like density layer using grouped circles. */
   heat?: boolean;
   baseColor?: string;
+  /** Drop the rounded border so the map can sit flush as a background. */
+  flush?: boolean;
 };
 
 export function GeoMap(props: Props) {
@@ -24,8 +26,8 @@ export function GeoMap(props: Props) {
     <ClientOnly
       fallback={
         <div
-          className="w-full rounded-2xl bg-muted animate-pulse"
-          style={{ height: props.height ?? 380 }}
+          className={props.flush ? "w-full h-full bg-muted animate-pulse" : "w-full rounded-2xl bg-muted animate-pulse"}
+          style={{ height: props.flush ? "100%" : (props.height ?? 380) }}
         />
       }
     >
@@ -34,7 +36,7 @@ export function GeoMap(props: Props) {
   );
 }
 
-function GeoMapInner({ points, height = 380, heat = false, baseColor }: Props) {
+function GeoMapInner({ points, height = 380, heat = false, baseColor, flush = false }: Props) {
   const { city, radiusKm } = useFilters();
   const RL = useClientModule(() => import("react-leaflet"));
   const L = useClientModule(() => import("leaflet"));
@@ -60,8 +62,8 @@ function GeoMapInner({ points, height = 380, heat = false, baseColor }: Props) {
   if (!RL || !L) {
     return (
       <div
-        className="w-full rounded-2xl bg-muted animate-pulse"
-        style={{ height }}
+        className={flush ? "w-full h-full bg-muted animate-pulse" : "w-full rounded-2xl bg-muted animate-pulse"}
+        style={{ height: flush ? "100%" : height }}
       />
     );
   }
@@ -70,7 +72,10 @@ function GeoMapInner({ points, height = 380, heat = false, baseColor }: Props) {
   const maxN = Math.max(1, ...heatGroups.map((g) => g.n));
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border" style={{ height }}>
+    <div
+      className={flush ? "w-full h-full" : "overflow-hidden rounded-2xl border border-border"}
+      style={{ height: flush ? "100%" : height }}
+    >
       <MapContainer
         key={`${city.id}-${heat}`}
         center={[city.lat, city.lon]}
