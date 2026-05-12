@@ -62,8 +62,8 @@ function GeoMapInner({ points, height = 380, heat = false, baseColor, flush = fa
   if (!RL || !L) {
     return (
       <div
-        className="w-full rounded-2xl bg-muted animate-pulse"
-        style={{ height }}
+        className={flush ? "w-full h-full bg-muted animate-pulse" : "w-full rounded-2xl bg-muted animate-pulse"}
+        style={{ height: flush ? "100%" : height }}
       />
     );
   }
