@@ -24,7 +24,11 @@ type Ctx = {
 
 const FilterCtx = createContext<Ctx | null>(null);
 
-const STUTTGART = CITIES[0];
+const ALL_CITIES: City[] = [
+  ...CITIES,
+  ...realStadtTowns().filter((t) => !CITIES.some((c) => c.id === t.id)),
+];
+const STUTTGART = ALL_CITIES[0];
 
 export function FilterProvider({ children }: { children: ReactNode }) {
   const [cityId, setCityId] = useState<string>(STUTTGART.id);
