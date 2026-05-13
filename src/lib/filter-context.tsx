@@ -36,7 +36,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const [range, setRange] = useState<TimeRange>(90);
   const [lastUpdated] = useState(new Date());
 
-  const city = useMemo(() => CITIES.find((c) => c.id === cityId) ?? STUTTGART, [cityId]);
+  const city = useMemo(() => ALL_CITIES.find((c) => c.id === cityId) ?? STUTTGART, [cityId]);
 
   const raw = useMemo(
     () => ({
