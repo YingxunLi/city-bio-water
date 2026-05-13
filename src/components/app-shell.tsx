@@ -18,9 +18,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="md:h-screen md:overflow-hidden min-h-screen flex flex-col bg-background">
       <header className="h-14 shrink-0 z-40 border-b border-border bg-background/90 backdrop-blur-xl flex items-center px-4 md:px-6 gap-3">
-        <Link to="/" className="flex items-center gap-2 shrink-0" aria-label={de.appName}>
-          <div className="size-7 rounded-lg bg-gradient-to-br from-[var(--wasser)] via-[var(--bio)] to-[var(--stadt)]" />
-          <span className="font-semibold tracking-tight hidden sm:inline">{de.appName}</span>
+        <Link to="/" className="flex items-center shrink-0" aria-label="ParKli">
+          <img src={parkliLogo} alt="ParKli" className="h-7 w-auto" />
         </Link>
         <nav className="ml-auto flex items-center gap-1">
           {items.map((it) => {
