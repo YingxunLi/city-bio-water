@@ -75,7 +75,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
         setRadiusKm,
         range,
         setRange,
-        cities: CITIES,
+        cities: ALL_CITIES,
         data,
         totals,
         lastUpdated,
