@@ -142,44 +142,21 @@ export function generateWasser(city: City, count = 220): WasserPoint[] {
   });
 }
 
-export function generateStadt(city: City, count = 180): StadtPoint[] {
-  const rand = mulberry32(hash("stadt_" + city.id));
-  return Array.from({ length: count }, (_, i) => {
-    const [lat, lon] = jitter(rand, city.lat, city.lon, 22);
-    return {
-      id: `s_${city.id}_${i}`,
-      lat,
-      lon,
-      nest: Math.round(35 + rand() * 60),
-      shade: Math.round(rand() * 100),
-      drinking: Math.round(rand() * 100),
-      fountains: Math.round(rand() * 100),
-      biodiversity: Math.round(rand() * 100),
-      greenCare: Math.round(rand() * 100),
-      type: STADT_TYPES[Math.floor(rand() * STADT_TYPES.length)],
-      date: dateInRange(rand, N_DAYS_POOL),
-    };
-  });
+// Stadt + Bio now come from real CSV sources (Greenspace Hack & iNaturalist).
+// City parameter is unused — distance/time filtering happens in the context.
+import { realStadtPoints, realBioPoints } from "./real-data";
+
+export function generateStadt(_city: City): StadtPoint[] {
+  return realStadtPoints();
 }
 
-export function generateBio(city: City, count = 420): BioPoint[] {
-  const rand = mulberry32(hash("bio_" + city.id));
-  return Array.from({ length: count }, (_, i) => {
-    const [lat, lon] = jitter(rand, city.lat, city.lon, 28);
-    const category = BIO_CATEGORIES[Math.floor(rand() * BIO_CATEGORIES.length)];
-    const speciesList = SPECIES[category];
-    return {
-      id: `b_${city.id}_${i}`,
-      lat,
-      lon,
-      category,
-      species: speciesList[Math.floor(rand() * speciesList.length)],
-      invasive: rand() < 0.08,
-      threatened: rand() < 0.06,
-      date: dateInRange(rand, N_DAYS_POOL),
-    };
-  });
+export function generateBio(_city: City): BioPoint[] {
+  return realBioPoints();
 }
+
+// keep SPECIES export reference quiet
+void SPECIES;
+void BIO_CATEGORIES;
 
 // ---- Forel-Ule color scale (1..21) ----
 // Approximation of the FU scale colors.

@@ -22,29 +22,29 @@ export function MapDashboard({
     <>
       {/* Mobile (scrollable) */}
       <div className="md:hidden">
-        <div className="relative h-[58vh] min-h-[360px]">
-          <div className="absolute inset-0">{map}</div>
-          {overlay && <div className="absolute top-3 left-3 right-3 z-20">{overlay}</div>}
+        <div className="relative h-[58vh] min-h-[360px] isolate">
+          <div className="absolute inset-0 z-0">{map}</div>
+          {overlay && <div className="absolute top-3 left-3 right-3 z-[1000]">{overlay}</div>}
           {mapLegend && (
-            <div className="absolute top-1/2 right-3 -translate-y-1/2 z-20">{mapLegend}</div>
+            <div className="absolute top-1/2 right-3 -translate-y-1/2 z-[1000]">{mapLegend}</div>
           )}
-          {mapControls && <div className="absolute bottom-3 left-3 z-20">{mapControls}</div>}
+          {mapControls && <div className="absolute bottom-3 left-3 z-[1000]">{mapControls}</div>}
         </div>
         <div className="px-4 py-5 space-y-4 pb-12">{panel}</div>
       </div>
 
       {/* Desktop (single screen) */}
-      <div className="hidden md:block relative h-full">
-        <div className="absolute inset-0">{map}</div>
-        {overlay && <div className="absolute top-5 left-5 z-20 w-[340px]">{overlay}</div>}
+      <div className="hidden md:block relative h-full isolate">
+        <div className="absolute inset-0 z-0">{map}</div>
+        {overlay && <div className="absolute top-5 left-5 z-[1000] w-[340px]">{overlay}</div>}
         {mapLegend && (
-          <div className="absolute right-5 top-1/2 -translate-y-[60%] z-20">{mapLegend}</div>
+          <div className="absolute right-5 top-1/2 -translate-y-[60%] z-[1000]">{mapLegend}</div>
         )}
         {mapControls && (
-          <div className="absolute z-20 left-5 bottom-[calc(38vh+24px)]">{mapControls}</div>
+          <div className="absolute z-[1000] left-5 bottom-[calc(38vh+24px)]">{mapControls}</div>
         )}
         <div
-          className="absolute bottom-4 left-4 right-4 z-20 rounded-3xl border border-border overflow-hidden"
+          className="absolute bottom-4 left-4 right-4 z-[1000] rounded-3xl border border-border overflow-hidden"
           style={{
             height: "36vh",
             minHeight: 280,

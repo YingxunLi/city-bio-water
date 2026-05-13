@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { CITIES, type City, distanceKm, generateBio, generateStadt, generateWasser } from "./mock-data";
+import { realStadtTowns } from "./real-data";
 
 export type TimeRange = 7 | 30 | 90 | 365 | 9999;
 
@@ -23,7 +24,11 @@ type Ctx = {
 
 const FilterCtx = createContext<Ctx | null>(null);
 
-const STUTTGART = CITIES[0];
+const ALL_CITIES: City[] = [
+  ...CITIES,
+  ...realStadtTowns().filter((t) => !CITIES.some((c) => c.id === t.id)),
+];
+const STUTTGART = ALL_CITIES[0];
 
 export function FilterProvider({ children }: { children: ReactNode }) {
   const [cityId, setCityId] = useState<string>(STUTTGART.id);
@@ -31,7 +36,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const [range, setRange] = useState<TimeRange>(90);
   const [lastUpdated] = useState(new Date());
 
-  const city = useMemo(() => CITIES.find((c) => c.id === cityId) ?? STUTTGART, [cityId]);
+  const city = useMemo(() => ALL_CITIES.find((c) => c.id === cityId) ?? STUTTGART, [cityId]);
 
   const raw = useMemo(
     () => ({
@@ -70,7 +75,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
         setRadiusKm,
         range,
         setRange,
-        cities: CITIES,
+        cities: ALL_CITIES,
         data,
         totals,
         lastUpdated,
