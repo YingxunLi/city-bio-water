@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { de } from "@/lib/i18n";
 import { useFilters } from "@/lib/filter-context";
 import { ClientOnly } from "@/components/client-only";
+import parkliLogo from "@/assets/parkli-logo.png";
 
 const items = [
   { to: "/", label: de.nav.home, accent: "var(--foreground)" },
