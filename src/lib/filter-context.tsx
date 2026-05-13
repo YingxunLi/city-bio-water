@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { CITIES, type City, distanceKm, generateBio, generateStadt, generateWasser } from "./mock-data";
+import { realStadtTowns } from "./real-data";
 
 export type TimeRange = 7 | 30 | 90 | 365 | 9999;
 
