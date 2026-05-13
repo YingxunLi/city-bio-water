@@ -5,7 +5,6 @@
 import gsRaw from "@/data/greenspace.csv?raw";
 import inatRaw from "@/data/inaturalist.csv?raw";
 import {
-  BIO_CATEGORIES,
   STADT_TYPES,
   type BioCategory,
   type BioPoint,
