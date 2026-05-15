@@ -186,7 +186,7 @@ function GeoMapInner({ points, height = 380, heat = false, baseColor: _baseColor
 function MapZoomControls({ onZoomIn, onZoomOut }: { onZoomIn: () => void; onZoomOut: () => void }) {
   return (
     <div
-      className="absolute z-[500] right-4 md:right-5 bottom-[calc(36vh+44px)] md:bottom-[calc(36vh+44px)] flex flex-col rounded-2xl border border-border overflow-hidden"
+      className="absolute z-[500] right-3 md:right-5 bottom-3 md:bottom-[calc(36vh+44px)] flex flex-col rounded-2xl border border-border overflow-hidden"
       style={{
         background: "color-mix(in oklab, white 92%, transparent)",
         backdropFilter: "saturate(180%) blur(20px)",
