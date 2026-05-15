@@ -6,7 +6,7 @@ import { FilterBar } from "@/components/filter-bar";
 import { GeoMap, type MapPoint } from "@/components/geo-map";
 import { MapDashboard, PanelTabs, FloatingCard } from "@/components/map-dashboard";
 import { ViewToggle } from "@/components/ui-bits";
-import { TimeSeries, bucketByDay } from "@/components/time-series";
+// import removed: TimeSeries no longer used here
 import { BIO_CATEGORIES } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/biodiversitaet")({
@@ -32,10 +32,10 @@ const CAT_COLORS: Record<string, string> = {
   Mammalia: "#243285",
 };
 
-type Tab = "stats" | "kategorien" | "arten" | "verlauf";
+type Tab = "stats" | "kategorien" | "arten";
 
 function BioPage() {
-  const { data, range } = useFilters();
+  const { data } = useFilters();
   const [chartMode, setChartMode] = useState<"bar" | "donut">("donut");
   const [tab, setTab] = useState<Tab>("stats");
 
@@ -48,7 +48,7 @@ function BioPage() {
     tooltip: `<b>${p.species}</b><br/>${p.category}${p.invasive ? " · invasiv" : ""}${p.threatened ? " · bedroht" : ""}`,
   }));
 
-  const ts = bucketByDay(data.bio, range);
+  // verlauf disabled per spec
   const speciesSet = new Set(data.bio.map((b) => b.species));
   const invasiveCount = data.bio.filter((b) => b.invasive).length;
   const threatenedCount = data.bio.filter((b) => b.threatened).length;
@@ -90,7 +90,6 @@ function BioPage() {
               { v: "stats", label: "Statistik" },
               { v: "kategorien", label: de.bio.categories },
               { v: "arten", label: "Häufigste Arten" },
-              { v: "verlauf", label: de.common.overTime },
             ]}
             right={
               tab === "kategorien" ? (
@@ -178,8 +177,6 @@ function BioPage() {
                 ))}
               </ul>
             ))}
-
-          {tab === "verlauf" && <TimeSeries data={ts} color={BIO} height={200} />}
         </>
       }
     />

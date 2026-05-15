@@ -131,6 +131,7 @@
 @layer base {
   * { border-color: var(--color-border); }
   html, body, #root { height: 100%; }
+  html { touch-action: manipulation; }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
@@ -138,7 +139,10 @@
     font-feature-settings: "cv11", "ss01", "ss03";
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    overscroll-behavior: none;
   }
+  /* let leaflet handle its own gestures only inside the map */
+  .leaflet-container { touch-action: none; }
 }
 
 @layer components {
