@@ -6,7 +6,7 @@ import { FilterBar } from "@/components/filter-bar";
 import { GeoMap, type MapPoint } from "@/components/geo-map";
 import { MapDashboard, PanelTabs, FloatingCard } from "@/components/map-dashboard";
 import { ViewToggle } from "@/components/ui-bits";
-import { TimeSeries, bucketByDay } from "@/components/time-series";
+// import removed: TimeSeries no longer used here
 import { BIO_CATEGORIES } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/biodiversitaet")({
@@ -177,8 +177,6 @@ function BioPage() {
                 ))}
               </ul>
             ))}
-
-          {tab === "verlauf" && <TimeSeries data={ts} color={BIO} height={200} />}
         </>
       }
     />
