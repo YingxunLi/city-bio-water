@@ -8,6 +8,8 @@ import { MapDashboard, PanelTabs, FloatingCard } from "@/components/map-dashboar
 import { ViewToggle } from "@/components/ui-bits";
 import { TimeSeries, bucketByDay } from "@/components/time-series";
 import { BoxRow, RadarBox, computeBox } from "@/components/box-charts";
+import { MultiTime } from "@/components/multi-time";
+import { Treemap } from "@/components/treemap";
 import { STADT_TYPES, nestColor } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/stadt")({
@@ -23,12 +25,13 @@ export const Route = createFileRoute("/stadt")({
 const STADT = "#F0A08C";
 
 type Tab = "stats" | "verteilung" | "typen" | "verlauf";
+type TypView = "anzahl" | "score" | "tree";
 
 function StadtPage() {
   const { data, range } = useFilters();
   const [mapMode, setMapMode] = useState<"points" | "heat">("points");
-  const [boxMode, setBoxMode] = useState<"box" | "radar">("radar");
   const [tab, setTab] = useState<Tab>("stats");
+  const [typView, setTypView] = useState<TypView>("anzahl");
 
   const points: MapPoint[] = data.stadt.map((p) => ({
     id: p.id,
@@ -44,9 +47,11 @@ function StadtPage() {
     ? Math.round(data.stadt.reduce((a, b) => a + b.nest, 0) / data.stadt.length)
     : 0;
 
+  // Score-Kategorien with "Gesamt" first
   const catMetrics = useMemo(() => {
     if (data.stadt.length === 0) return [];
     return [
+      { key: de.common.gesamt, values: data.stadt.map((d) => d.nest) },
       { key: de.stadt.categories.shade, values: data.stadt.map((d) => d.shade) },
       { key: de.stadt.categories.drinking, values: data.stadt.map((d) => d.drinking) },
       { key: de.stadt.categories.fountains, values: data.stadt.map((d) => d.fountains) },
@@ -60,11 +65,24 @@ function StadtPage() {
       STADT_TYPES.map((t) => {
         const subset = data.stadt.filter((p) => p.type === t);
         const avg = subset.length ? subset.reduce((a, b) => a + b.nest, 0) / subset.length : 0;
-        return { type: t, count: subset.length, score: Math.round(avg) };
-      }),
+        return { type: t, count: subset.length, score: Math.round(avg), values: subset.map((s) => s.nest) };
+      }).filter((b) => b.count > 0),
     [data.stadt],
   );
   const maxCount = Math.max(1, ...byType.map((b) => b.count));
+
+  const series = useMemo(
+    () => [
+      {
+        key: "nest",
+        label: de.stadt.nest,
+        unit: "",
+        opacity: 1,
+        values: data.stadt.map((d) => ({ ts: new Date(d.date).getTime(), v: d.nest })),
+      },
+    ],
+    [data.stadt],
+  );
 
   return (
     <MapDashboard
@@ -99,13 +117,14 @@ function StadtPage() {
               { v: "verlauf", label: de.common.overTime },
             ]}
             right={
-              tab === "verteilung" ? (
+              tab === "typen" ? (
                 <ViewToggle
-                  value={boxMode}
-                  onChange={setBoxMode}
+                  value={typView}
+                  onChange={setTypView}
                   options={[
-                    { v: "radar", label: de.common.radarView },
-                    { v: "box", label: de.common.boxplotView },
+                    { v: "anzahl", label: "Anzahl" },
+                    { v: "score", label: "Score" },
+                    { v: "tree", label: "Treemap" },
                   ]}
                 />
               ) : null
@@ -113,76 +132,113 @@ function StadtPage() {
           />
 
           {tab === "stats" && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Stat label={de.common.observations} value={data.stadt.length} accent={STADT} />
-              <Stat label={`Ø ${de.stadt.nest}`} value={avgNest || "—"} accent={STADT} />
-              <Stat
-                label="Beste Fläche"
-                value={data.stadt.length ? Math.max(...data.stadt.map((d) => d.nest)) : "—"}
-                accent={STADT}
-              />
-              <Stat
-                label="Flächentypen"
-                value={new Set(data.stadt.map((d) => d.type)).size}
-                accent={STADT}
-              />
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Stat label={de.common.observations} value={data.stadt.length} accent={STADT} hint="Gesamtzahl" />
+                <Stat label={de.stadt.nest} value={avgNest || "—"} accent={STADT} hint={de.common.avg} />
+                <Stat
+                  label="Beste Fläche"
+                  value={data.stadt.length ? Math.max(...data.stadt.map((d) => d.nest)) : "—"}
+                  accent={STADT}
+                  hint="Maximum"
+                />
+                <Stat
+                  label="Flächentypen"
+                  value={new Set(data.stadt.map((d) => d.type)).size}
+                  accent={STADT}
+                  hint="Anzahl"
+                />
+              </div>
+              <div className="rounded-2xl border border-border bg-card p-3">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                  {de.common.observations} · {de.common.overTime}
+                </div>
+                <TimeSeries data={ts} color={STADT} height={120} />
+              </div>
             </div>
           )}
 
           {tab === "verteilung" &&
             (catMetrics.length === 0 ? (
               <Empty />
-            ) : boxMode === "radar" ? (
-              <div className="flex justify-center">
-                <RadarBox
-                  stats={catMetrics.map((m) => computeBox(m.values, m.key))}
-                  domain={[0, 100]}
-                  color={STADT}
-                  size={260}
-                />
-              </div>
             ) : (
-              <div className="space-y-2.5">
-                {catMetrics.map((m) => (
-                  <BoxRow key={m.key} stats={computeBox(m.values, m.key)} domain={[0, 100]} color={STADT} />
-                ))}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div className="flex justify-center">
+                  <RadarBox
+                    stats={catMetrics.map((m) => computeBox(m.values, m.key))}
+                    domain={[0, 100]}
+                    color={STADT}
+                    size={220}
+                  />
+                </div>
+                <div className="space-y-2">
+                  {catMetrics.map((m) => (
+                    <BoxRow key={m.key} stats={computeBox(m.values, m.key)} domain={[0, 100]} color={STADT} />
+                  ))}
+                </div>
               </div>
             ))}
 
-          {tab === "typen" && (
-            <div className="space-y-2">
-              {byType.map((b) => (
-                <div
-                  key={b.type}
-                  className="grid grid-cols-[160px_1fr_60px] items-center gap-3"
-                  title={`${b.type}: ${b.count} Flächen, Ø Score ${b.score}`}
-                >
-                  <div className="text-xs truncate">{b.type}</div>
-                  <div className="h-5 bg-muted rounded-md overflow-hidden">
-                    <div
-                      className="h-full rounded-md transition-all"
-                      style={{
-                        width: `${(b.count / maxCount) * 100}%`,
-                        background: `color-mix(in oklab, ${STADT} ${30 + (b.score / 100) * 60}%, white)`,
-                      }}
-                    />
+          {tab === "typen" &&
+            (byType.length === 0 ? (
+              <Empty />
+            ) : typView === "anzahl" ? (
+              <div className="space-y-2">
+                {byType.map((b) => (
+                  <div
+                    key={b.type}
+                    className="grid grid-cols-[160px_1fr_60px] items-center gap-3"
+                    title={`${b.type}: ${b.count} Flächen, Ø Score ${b.score}`}
+                  >
+                    <div className="text-xs truncate">{b.type}</div>
+                    <div className="h-5 bg-muted rounded-md overflow-hidden">
+                      <div
+                        className="h-full rounded-md transition-all"
+                        style={{
+                          width: `${(b.count / maxCount) * 100}%`,
+                          background: STADT,
+                          opacity: 0.85,
+                        }}
+                      />
+                    </div>
+                    <div className="text-[11px] text-muted-foreground stat-number text-right">
+                      {b.count}
+                    </div>
                   </div>
-                  <div className="text-[11px] text-muted-foreground stat-number text-right">
-                    {b.count} · {b.score || "—"}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            ) : typView === "score" ? (
+              <div className="space-y-2.5">
+                {byType.map((b) => (
+                  <BoxRow
+                    key={b.type}
+                    stats={computeBox(b.values, b.type)}
+                    domain={[0, 100]}
+                    color={STADT}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Treemap
+                items={byType.map((b) => ({ key: b.type, label: b.type, value: b.count, score: b.score }))}
+                color={STADT}
+                height={220}
+              />
+            ))}
 
-          {tab === "verlauf" && <TimeSeries data={ts} color={STADT} height={200} />}
+          {tab === "verlauf" &&
+            (data.stadt.length === 0 ? (
+              <Empty />
+            ) : (
+              <MultiTime series={series} color={STADT} rangeDays={range} height={200} />
+            ))}
         </>
       }
     />
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: React.ReactNode; accent: string }) {
+function Stat({ label, value, accent, hint }: { label: string; value: React.ReactNode; accent: string; hint?: string }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-3 relative overflow-hidden">
       <div
@@ -193,6 +249,7 @@ function Stat({ label, value, accent }: { label: string; value: React.ReactNode;
         {label}
       </div>
       <div className="mt-1 text-xl md:text-2xl font-semibold stat-number">{value}</div>
+      {hint && <div className="text-[10px] text-muted-foreground mt-0.5">{hint}</div>}
     </div>
   );
 }
@@ -202,20 +259,21 @@ function NestLegendVertical() {
     <div
       className="rounded-2xl border border-border p-2 flex items-stretch gap-2"
       style={{
-        background: "color-mix(in oklab, white 88%, transparent)",
+        background: "color-mix(in oklab, white 92%, transparent)",
         backdropFilter: "saturate(180%) blur(20px)",
         boxShadow: "var(--shadow-float)",
+        height: 220,
       }}
       title="NEST Score 0–100"
     >
-      <div className="flex flex-col text-[9px] text-muted-foreground stat-number justify-between py-0.5 leading-none">
-        <span>100</span>
-        <span>50</span>
-        <span>0</span>
+      <div className="flex flex-col text-[9px] text-muted-foreground stat-number justify-between leading-none w-7 text-right">
+        {[100, 75, 50, 25, 0].map((n) => (
+          <span key={n}>{n}</span>
+        ))}
       </div>
-      <div className="w-2 rounded-full overflow-hidden flex flex-col">
-        {Array.from({ length: 20 }, (_, i) => {
-          const v = ((19 - i) / 19) * 100;
+      <div className="w-2.5 rounded-full overflow-hidden flex flex-col">
+        {Array.from({ length: 24 }, (_, i) => {
+          const v = ((23 - i) / 23) * 100;
           return <div key={i} className="flex-1" style={{ background: nestColor(v) }} />;
         })}
       </div>
