@@ -46,14 +46,15 @@ export function BoxRow({
   const [d0, d1] = domain;
   const span = Math.max(0.0001, d1 - d0);
   const x = (v: number) => ((v - d0) / span) * 100;
+  const tip = `${stats.key}\nMin ${stats.min.toFixed(2)}${unit}\nQ1 ${stats.q1.toFixed(2)}${unit}\nMedian ${stats.median.toFixed(2)}${unit}\nQ3 ${stats.q3.toFixed(2)}${unit}\nMax ${stats.max.toFixed(2)}${unit}\nn=${stats.n}`;
   return (
-    <div className="grid grid-cols-[110px_1fr_60px] items-center gap-3">
-      <div className="text-xs font-medium truncate" title={stats.key}>
-        {stats.key}
-      </div>
+    <div
+      className="grid grid-cols-[110px_1fr_60px] items-center gap-3 group"
+      title={tip}
+    >
+      <div className="text-xs font-medium truncate">{stats.key}</div>
       <div className="relative h-7">
         <div className="absolute inset-x-0 top-1/2 -translate-y-px h-px bg-border" />
-        {/* whiskers */}
         <div
           className="absolute top-1/2 -translate-y-px h-px"
           style={{
@@ -63,7 +64,6 @@ export function BoxRow({
             opacity: 0.5,
           }}
         />
-        {/* min/max ticks */}
         {[stats.min, stats.max].map((v, i) => (
           <div
             key={i}
@@ -71,22 +71,18 @@ export function BoxRow({
             style={{ left: `${x(v)}%`, background: color, opacity: 0.6 }}
           />
         ))}
-        {/* IQR box */}
         <div
-          className="absolute top-1/2 -translate-y-1/2 h-5 rounded-md border"
+          className="absolute top-1/2 -translate-y-1/2 h-5 rounded-md border transition-all group-hover:brightness-95"
           style={{
             left: `${x(stats.q1)}%`,
             width: `${Math.max(0.5, x(stats.q3) - x(stats.q1))}%`,
             background: `color-mix(in oklab, ${color} 22%, transparent)`,
             borderColor: color,
           }}
-          title={`Q1 ${stats.q1.toFixed(2)} – Q3 ${stats.q3.toFixed(2)}`}
         />
-        {/* median */}
         <div
           className="absolute top-1/2 -translate-y-1/2 h-5 w-[2px]"
           style={{ left: `${x(stats.median)}%`, background: color }}
-          title={`Median ${stats.median.toFixed(2)}`}
         />
       </div>
       <div className="text-[11px] text-muted-foreground stat-number text-right">
