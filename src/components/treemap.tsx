@@ -1,5 +1,5 @@
-// Lightweight squarified treemap (no d3 dependency).
-// Renders rectangles whose AREA ∝ value, with color/opacity bound to a score.
+// Lightweight squarified treemap rendering rectangles via absolute-positioned
+// HTML divs so text is never stretched. Rect area ∝ value; fill opacity ∝ score.
 import { useMemo } from "react";
 
 export type TreeItem = { key: string; value: number; score: number; label?: string };
@@ -14,7 +14,12 @@ function worst(row: TreeItem[], w: number, sum: number) {
   return Math.max((w2 * rMax) / s2, s2 / (w2 * rMin));
 }
 
-function layoutRow(row: TreeItem[], rect: { x: number; y: number; w: number; h: number }, total: number, horizontal: boolean): { rects: Rect[]; remaining: typeof rect } {
+function layoutRow(
+  row: TreeItem[],
+  rect: { x: number; y: number; w: number; h: number },
+  total: number,
+  horizontal: boolean,
+): { rects: Rect[]; remaining: typeof rect } {
   const rowSum = row.reduce((a, b) => a + b.value, 0);
   const ratio = rowSum / total;
   const rects: Rect[] = [];
@@ -57,7 +62,11 @@ function squarify(items: TreeItem[], width: number, height: number): Rect[] {
     const w = horizontal ? rect.w : rect.h;
     const next = scaled[i];
     const test = [...row, next];
-    if (row.length === 0 || worst(test, w, test.reduce((a, b) => a + b.value, 0)) <= worst(row, w, row.reduce((a, b) => a + b.value, 0))) {
+    if (
+      row.length === 0 ||
+      worst(test, w, test.reduce((a, b) => a + b.value, 0)) <=
+        worst(row, w, row.reduce((a, b) => a + b.value, 0))
+    ) {
       row = test;
       i++;
     } else {
@@ -78,63 +87,60 @@ function squarify(items: TreeItem[], width: number, height: number): Rect[] {
 
 export function Treemap({
   items,
-  width = 600,
   height = 220,
   color,
+  unit = "",
 }: {
   items: TreeItem[];
-  width?: number;
   height?: number;
   color: string;
+  unit?: string;
 }) {
-  const rects = useMemo(() => squarify(items, width, height), [items, width, height]);
+  // Compute layout in a 1000-unit virtual coordinate space, then position via %.
+  const W = 1000;
+  const H = 1000;
+  const rects = useMemo(() => squarify(items, W, H), [items]);
+
   return (
-    <div className="w-full">
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="none" style={{ height }}>
-        {rects.map((r) => {
-          const op = 0.18 + (Math.max(0, Math.min(100, r.item.score)) / 100) * 0.7;
-          return (
-            <g key={r.item.key}>
-              <rect
-                x={r.x + 1}
-                y={r.y + 1}
-                width={Math.max(0, r.w - 2)}
-                height={Math.max(0, r.h - 2)}
-                rx={6}
-                ry={6}
-                fill={color}
-                fillOpacity={op}
-                stroke="white"
-                strokeWidth={1}
-              >
-                <title>{`${r.item.label ?? r.item.key}: ${r.item.value} · Ø ${r.item.score}`}</title>
-              </rect>
-              {r.w > 70 && r.h > 28 && (
-                <>
-                  <text
-                    x={r.x + 8}
-                    y={r.y + 16}
-                    fontSize={11}
-                    fill="var(--foreground)"
-                    style={{ pointerEvents: "none" }}
-                  >
-                    {(r.item.label ?? r.item.key).slice(0, Math.max(4, Math.floor(r.w / 7)))}
-                  </text>
-                  <text
-                    x={r.x + 8}
-                    y={r.y + 30}
-                    fontSize={10}
-                    fill="var(--muted-foreground)"
-                    style={{ pointerEvents: "none" }}
-                  >
-                    {r.item.value} · {r.item.score}
-                  </text>
-                </>
-              )}
-            </g>
-          );
-        })}
-      </svg>
+    <div className="relative w-full rounded-lg overflow-hidden" style={{ height }}>
+      {rects.map((r) => {
+        const op = 0.18 + (Math.max(0, Math.min(100, r.item.score)) / 100) * 0.72;
+        const label = r.item.label ?? r.item.key;
+        const showText = r.w > 90 && r.h > 36;
+        return (
+          <div
+            key={r.item.key}
+            className="absolute rounded-md border border-white overflow-hidden flex flex-col justify-end p-1.5"
+            style={{
+              left: `${(r.x / W) * 100}%`,
+              top: `${(r.y / H) * 100}%`,
+              width: `${(r.w / W) * 100}%`,
+              height: `${(r.h / H) * 100}%`,
+              background: color,
+              opacity: 1,
+              backgroundColor: color,
+              // Apply opacity via color-mix to keep child text readable.
+              backgroundImage: `linear-gradient(${color}, ${color})`,
+              backgroundBlendMode: "normal",
+              filter: "none",
+            }}
+            title={`${label}\nAnzahl: ${r.item.value}\nScore: ${r.item.score}${unit}`}
+          >
+            <div
+              className="absolute inset-0"
+              style={{ background: color, opacity: op }}
+            />
+            {showText && (
+              <div className="relative z-10 text-[11px] leading-tight text-foreground/90">
+                <div className="font-medium truncate" title={label}>{label}</div>
+                <div className="text-[10px] text-foreground/70 stat-number">
+                  Anzahl {r.item.value} · Score {r.item.score}{unit}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
