@@ -4,11 +4,10 @@ import { useFilters } from "@/lib/filter-context";
 import { de } from "@/lib/i18n";
 import { FilterBar } from "@/components/filter-bar";
 import { GeoMap, type MapPoint } from "@/components/geo-map";
-import { MapDashboard, PanelTabs, FloatingCard } from "@/components/map-dashboard";
+import { MapDashboard, PanelTabs, PanelBody, FloatingCard } from "@/components/map-dashboard";
 import { ViewToggle } from "@/components/ui-bits";
 import { TimeSeries, bucketByDay } from "@/components/time-series";
-import { BoxRow, computeBox } from "@/components/box-charts";
-import { MultiTime } from "@/components/multi-time";
+import { MetricChart, type Point } from "@/components/metric-chart";
 import { FU_COLORS, fuColor } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/wasser")({
@@ -23,35 +22,25 @@ export const Route = createFileRoute("/wasser")({
 
 const WASSER = "#243285";
 
-type Tab = "stats" | "verteilung" | "verlauf";
+type Tab = "stats" | "fu" | "ph" | "trans";
 
-const FU_LABELS: Record<number, string> = {
-  1: "Klar, blau",
-  5: "Grünlich",
-  10: "Grün–braun",
-  15: "Bräunlich",
-  21: "Trüb, dunkel",
-};
+function fmtFull(d: string) {
+  const t = new Date(d);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`;
+}
 
-function fuTooltip(p: { fu: number; ph: number; transparenz: number; date: string }) {
+function fuTooltip(p: { fu: number; lat: number; lon: number; date: string; device: string }) {
   const c = fuColor(p.fu);
-  const date = new Date(p.date).toLocaleDateString("de-DE", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
   return `
-    <div style="display:flex;gap:10px;align-items:stretch;min-width:170px;padding:2px 0">
+    <div style="display:flex;gap:10px;align-items:stretch;min-width:230px;padding:2px 0">
       <div style="width:6px;border-radius:3px;background:${c};flex:none"></div>
-      <div style="display:flex;flex-direction:column;gap:4px;font-family:inherit">
-        <div style="display:flex;align-items:baseline;gap:6px">
-          <span style="font-size:18px;font-weight:600;letter-spacing:-0.02em">FU ${p.fu}</span>
-          <span style="font-size:10px;color:#6b7280">Forel-Ule</span>
-        </div>
-        <div style="font-size:11px;color:#374151;display:grid;grid-template-columns:auto auto;gap:2px 10px">
-          <span style="color:#6b7280">pH</span><span>${p.ph.toFixed(2)}</span>
-          <span style="color:#6b7280">Transp.</span><span>${p.transparenz.toFixed(1)} m</span>
-          <span style="color:#6b7280">Datum</span><span>${date}</span>
+      <div style="display:flex;flex-direction:column;gap:3px;font-family:inherit">
+        <div style="font-size:13px;font-weight:600;letter-spacing:-0.01em">FU value verarbeitet: ${p.fu}</div>
+        <div style="font-size:11px;color:#374151;display:flex;flex-direction:column;gap:1px">
+          <span><span style="color:#6b7280">Ort:</span> lat=${p.lat.toFixed(5)} lon=${p.lon.toFixed(5)}</span>
+          <span><span style="color:#6b7280">Datum:</span> ${fmtFull(p.date)}</span>
+          <span><span style="color:#6b7280">Gerätemodell:</span> ${p.device}</span>
         </div>
       </div>
     </div>`;
@@ -77,39 +66,16 @@ function WasserPage() {
   const avgPh = avg(data.wasser.map((d) => d.ph));
   const avgTrans = avg(data.wasser.map((d) => d.transparenz));
 
-  const metrics = useMemo(
-    () => [
-      { key: de.wasser.fu, values: data.wasser.map((d) => d.fu), domain: [1, 21] as [number, number], unit: "" },
-      { key: de.wasser.ph, values: data.wasser.map((d) => d.ph), domain: [6, 9] as [number, number], unit: "" },
-      { key: de.wasser.transparenz, values: data.wasser.map((d) => d.transparenz), domain: [0, 6] as [number, number], unit: " m" },
-    ],
+  const ptsFu: Point[] = useMemo(
+    () => data.wasser.map((d) => ({ ts: new Date(d.date).getTime(), v: d.fu, meta: { lat: d.lat, lon: d.lon } })),
     [data.wasser],
   );
-
-  const series = useMemo(
-    () => [
-      {
-        key: "fu",
-        label: de.wasser.fu,
-        unit: "",
-        opacity: 1,
-        values: data.wasser.map((d) => ({ ts: new Date(d.date).getTime(), v: d.fu })),
-      },
-      {
-        key: "ph",
-        label: de.wasser.ph,
-        unit: "",
-        opacity: 0.65,
-        values: data.wasser.map((d) => ({ ts: new Date(d.date).getTime(), v: d.ph })),
-      },
-      {
-        key: "tr",
-        label: de.wasser.transparenz,
-        unit: "m",
-        opacity: 0.4,
-        values: data.wasser.map((d) => ({ ts: new Date(d.date).getTime(), v: d.transparenz })),
-      },
-    ],
+  const ptsPh: Point[] = useMemo(
+    () => data.wasser.map((d) => ({ ts: new Date(d.date).getTime(), v: d.ph, meta: { lat: d.lat, lon: d.lon } })),
+    [data.wasser],
+  );
+  const ptsTr: Point[] = useMemo(
+    () => data.wasser.map((d) => ({ ts: new Date(d.date).getTime(), v: d.transparenz, meta: { lat: d.lat, lon: d.lon } })),
     [data.wasser],
   );
 
@@ -141,62 +107,53 @@ function WasserPage() {
             onChange={setTab}
             options={[
               { v: "stats", label: "Statistik" },
-              { v: "verteilung", label: "Verteilung" },
-              { v: "verlauf", label: de.common.overTime },
+              { v: "fu", label: de.wasser.fu },
+              { v: "ph", label: de.wasser.ph },
+              { v: "trans", label: de.wasser.transparenz },
             ]}
           />
-
-          {tab === "stats" && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Stat label={de.common.observations} value={data.wasser.length} accent={WASSER} hint="Gesamtzahl" />
-                <Stat
-                  label={de.wasser.fu}
-                  value={avgFu ? avgFu.toFixed(1) : "—"}
-                  accent={WASSER}
-                  hint={de.common.avg}
-                  swatch={avgFu ? fuColor(avgFu) : undefined}
-                />
-                <Stat label={de.wasser.ph} value={avgPh ? avgPh.toFixed(2) : "—"} accent={WASSER} hint={de.common.avg} />
-                <Stat
-                  label={de.wasser.transparenz}
-                  value={avgTrans ? `${avgTrans.toFixed(1)} m` : "—"}
-                  accent={WASSER}
-                  hint={de.common.avg}
-                />
-              </div>
-              <div className="rounded-2xl border border-border bg-card p-3">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-                  {de.common.observations} · {de.common.overTime}
-                </div>
-                <TimeSeries data={ts} color={WASSER} height={120} />
-              </div>
-            </div>
-          )}
-
-          {tab === "verteilung" &&
-            (data.wasser.length === 0 ? (
-              <Empty />
-            ) : (
-              <div className="space-y-2.5">
-                {metrics.map((m) => (
-                  <BoxRow
-                    key={m.key}
-                    stats={computeBox(m.values, m.key)}
-                    domain={m.domain}
-                    color={WASSER}
-                    unit={m.unit}
+          <PanelBody>
+            {tab === "stats" && (
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_1.3fr] gap-4">
+                <div className="grid grid-cols-2 gap-3 content-start">
+                  <Stat label={de.common.observations} value={data.wasser.length} accent={WASSER} hint="Gesamtzahl" />
+                  <Stat
+                    label={de.wasser.fu}
+                    value={avgFu ? avgFu.toFixed(1) : "—"}
+                    accent={WASSER}
+                    hint={`Ø ${de.common.avg}`}
+                    swatch={avgFu ? fuColor(avgFu) : undefined}
                   />
-                ))}
+                  <Stat label={de.wasser.ph} value={avgPh ? avgPh.toFixed(2) : "—"} accent={WASSER} hint={`Ø ${de.common.avg}`} />
+                  <Stat
+                    label={de.wasser.transparenz}
+                    value={avgTrans ? `${avgTrans.toFixed(1)} m` : "—"}
+                    accent={WASSER}
+                    hint={`Ø ${de.common.avg}`}
+                  />
+                </div>
+                <div className="rounded-2xl border border-border bg-card p-3 min-h-[180px]">
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                    {de.common.observations} · {de.common.overTime}
+                  </div>
+                  <TimeSeries data={ts} color={WASSER} height={160} />
+                </div>
               </div>
-            ))}
+            )}
 
-          {tab === "verlauf" &&
-            (data.wasser.length === 0 ? (
-              <Empty />
-            ) : (
-              <MultiTime series={series} color={WASSER} rangeDays={range} height={200} />
-            ))}
+            {tab === "fu" && (
+              data.wasser.length === 0 ? <Empty /> :
+              <MetricChart values={ptsFu} color={WASSER} rangeDays={range} label={de.wasser.fu} domain={[1, 21]} height={210} />
+            )}
+            {tab === "ph" && (
+              data.wasser.length === 0 ? <Empty /> :
+              <MetricChart values={ptsPh} color={WASSER} rangeDays={range} unit="" label={de.wasser.ph} domain={[6, 9]} height={210} />
+            )}
+            {tab === "trans" && (
+              data.wasser.length === 0 ? <Empty /> :
+              <MetricChart values={ptsTr} color={WASSER} rangeDays={range} unit=" m" label={de.wasser.transparenz} domain={[0, 6]} height={210} />
+            )}
+          </PanelBody>
         </>
       }
     />
@@ -218,17 +175,10 @@ function Stat({
 }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-3 relative overflow-hidden">
-      <div
-        className="absolute -top-6 -right-6 size-20 rounded-full opacity-10"
-        style={{ background: accent }}
-      />
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-        {label}
-      </div>
+      <div className="absolute -top-6 -right-6 size-20 rounded-full opacity-10" style={{ background: accent }} />
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{label}</div>
       <div className="mt-1 flex items-center gap-1.5">
-        {swatch && (
-          <span className="size-3 rounded-full border border-border" style={{ background: swatch }} />
-        )}
+        {swatch && <span className="size-3 rounded-full border border-border" style={{ background: swatch }} />}
         <span className="text-xl md:text-2xl font-semibold stat-number">{value}</span>
       </div>
       {hint && <div className="text-[10px] text-muted-foreground mt-0.5">{hint}</div>}
@@ -239,26 +189,21 @@ function Stat({
 function FuLegendVertical() {
   return (
     <div
-      className="rounded-2xl border border-border p-2 flex items-stretch gap-2"
+      className="rounded-2xl border border-border p-2 flex items-stretch gap-1.5"
       style={{
         background: "color-mix(in oklab, white 92%, transparent)",
         backdropFilter: "saturate(180%) blur(20px)",
         boxShadow: "var(--shadow-float)",
-        height: 220,
+        height: 280,
       }}
-      title="Forel-Ule-Skala (1 klar – 21 trüb)"
+      title="Forel-Ule-Skala (1 – 21)"
     >
-      <div className="flex flex-col text-[9px] text-muted-foreground stat-number justify-between leading-none w-7 text-right">
-        {[1, 5, 10, 15, 21].map((n) => (
-          <div key={n} className="flex flex-col items-end">
-            <span>{n}</span>
-            {FU_LABELS[n] && (
-              <span className="text-[8px] opacity-70 leading-tight">{FU_LABELS[n]}</span>
-            )}
-          </div>
+      <div className="flex flex-col text-[9px] text-muted-foreground stat-number justify-between leading-none w-4 text-right">
+        {FU_COLORS.map((_, i) => (
+          <span key={i}>{i + 1}</span>
         ))}
       </div>
-      <div className="w-2.5 rounded-full overflow-hidden flex flex-col">
+      <div className="w-3 rounded-full overflow-hidden flex flex-col">
         {FU_COLORS.map((c, i) => (
           <div key={i} className="flex-1" style={{ background: c }} title={`FU ${i + 1}`} />
         ))}
@@ -268,7 +213,5 @@ function FuLegendVertical() {
 }
 
 function Empty() {
-  return (
-    <div className="text-sm text-muted-foreground text-center py-8">{de.common.noData}</div>
-  );
+  return <div className="text-sm text-muted-foreground text-center py-8">{de.common.noData}</div>;
 }
