@@ -126,130 +126,145 @@ export function MetricChart({
       </div>
 
       <div className="flex-1 min-h-0" style={{ minHeight: height }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart margin={{ top: 6, right: 12, left: -16, bottom: 0 }}>
-            <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" vertical={false} />
-            <XAxis
-              type="number"
-              dataKey="ts"
-              domain={[tMin, tMax]}
-              tickFormatter={fmtDate}
-              tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-              axisLine={false}
-              tickLine={false}
-              minTickGap={28}
-            />
-            <YAxis
-              type="number"
-              dataKey="v"
-              domain={[yMin, yMax]}
-              tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-              axisLine={false}
-              tickLine={false}
-              width={32}
-            />
-            <Tooltip
-              cursor={{ stroke: "var(--border)", strokeDasharray: "3 3" }}
-              contentStyle={{
-                background: "var(--popover)",
-                border: "1px solid var(--border)",
-                borderRadius: 12,
-                boxShadow: "var(--shadow-float)",
-                fontSize: 12,
-              }}
-              content={({ active, payload }) => {
-                if (!active || !payload?.length) return null;
-                const p = payload[0].payload;
-                if (mode === "box") {
+        {mode === "box" ? (
+          <BoxSvg
+            buckets={buckets}
+            color={color}
+            yMin={yMin}
+            yMax={yMax}
+            tMin={tMin}
+            tMax={tMax}
+            unit={unit}
+            height={height}
+          />
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart margin={{ top: 6, right: 12, left: -16, bottom: 0 }}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" vertical={false} />
+              <XAxis
+                type="number"
+                dataKey="ts"
+                domain={[tMin, tMax]}
+                tickFormatter={fmtDate}
+                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                axisLine={false}
+                tickLine={false}
+                minTickGap={28}
+              />
+              <YAxis
+                type="number"
+                dataKey="v"
+                domain={[yMin, yMax]}
+                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                axisLine={false}
+                tickLine={false}
+                width={32}
+              />
+              <Tooltip
+                cursor={{ stroke: "var(--border)", strokeDasharray: "3 3" }}
+                contentStyle={{
+                  background: "var(--popover)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  boxShadow: "var(--shadow-float)",
+                  fontSize: 12,
+                }}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const p = payload[0].payload;
                   return (
                     <div className="rounded-xl border border-border bg-popover p-2.5 text-[11px] shadow-md">
-                      <div className="font-medium mb-1">{fmtDate(p.ts)} · n={p.n}</div>
-                      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-muted-foreground">
-                        <span>Max</span><span className="text-foreground stat-number">{p.max.toFixed(2)}{unit}</span>
-                        <span>Q3</span><span className="text-foreground stat-number">{p.q3.toFixed(2)}{unit}</span>
-                        <span>Median</span><span className="text-foreground stat-number font-medium">{p.m.toFixed(2)}{unit}</span>
-                        <span>Q1</span><span className="text-foreground stat-number">{p.q1.toFixed(2)}{unit}</span>
-                        <span>Min</span><span className="text-foreground stat-number">{p.min.toFixed(2)}{unit}</span>
+                      <div className="font-medium stat-number text-foreground">
+                        {(mode === "line" ? p.m : p.v).toFixed(2)}{unit}
                       </div>
+                      <div className="text-muted-foreground">{fmtFull(p.ts)}</div>
+                      {p.meta?.lat != null && (
+                        <div className="text-muted-foreground stat-number">
+                          lat={p.meta.lat.toFixed(5)} · lon={p.meta.lon.toFixed(5)}
+                        </div>
+                      )}
                     </div>
                   );
-                }
-                return (
-                  <div className="rounded-xl border border-border bg-popover p-2.5 text-[11px] shadow-md">
-                    <div className="font-medium stat-number text-foreground">
-                      {(mode === "line" ? p.m : p.v).toFixed(2)}{unit}
-                    </div>
-                    <div className="text-muted-foreground">{fmtFull(p.ts)}</div>
-                    {p.meta?.lat != null && (
-                      <div className="text-muted-foreground stat-number">
-                        lat={p.meta.lat.toFixed(5)} · lon={p.meta.lon.toFixed(5)}
-                      </div>
-                    )}
-                  </div>
-                );
-              }}
-            />
-            {mode === "points" && (
-              <Scatter
-                data={points}
-                fill={color}
-                fillOpacity={0.7}
-                stroke="none"
-                shape="circle"
+                }}
               />
-            )}
-            {mode === "line" && (
-              <Line
-                data={buckets}
-                type="monotone"
-                dataKey="m"
-                stroke={color}
-                strokeWidth={2}
-                dot={{ r: 2.5, fill: color, stroke: "none" }}
-                isAnimationActive={false}
-              />
-            )}
-            {mode === "box" && (
-              <>
-                {/* whisker line (min..max) via thin vertical bars rendered as Scatter shape */}
-                <Scatter
+              {mode === "points" && (
+                <Scatter data={points} fill={color} fillOpacity={0.7} stroke="none" shape="circle" />
+              )}
+              {mode === "line" && (
+                <Line
                   data={buckets}
-                  shape={(props: any) => {
-                    const { cx, payload, yAxis } = props;
-                    if (!yAxis) return <g />;
-                    const yMinPx = yAxis.scale(payload.min);
-                    const yMaxPx = yAxis.scale(payload.max);
-                    const yQ1 = yAxis.scale(payload.q1);
-                    const yQ3 = yAxis.scale(payload.q3);
-                    const yMed = yAxis.scale(payload.m);
-                    const w = 10;
-                    return (
-                      <g>
-                        <line x1={cx} x2={cx} y1={yMinPx} y2={yMaxPx} stroke={color} strokeOpacity={0.5} strokeWidth={1} />
-                        <line x1={cx - 4} x2={cx + 4} y1={yMinPx} y2={yMinPx} stroke={color} strokeOpacity={0.6} />
-                        <line x1={cx - 4} x2={cx + 4} y1={yMaxPx} y2={yMaxPx} stroke={color} strokeOpacity={0.6} />
-                        <rect
-                          x={cx - w / 2}
-                          y={Math.min(yQ1, yQ3)}
-                          width={w}
-                          height={Math.max(2, Math.abs(yQ3 - yQ1))}
-                          fill={color}
-                          fillOpacity={0.25}
-                          stroke={color}
-                          strokeWidth={1}
-                          rx={2}
-                        />
-                        <line x1={cx - w / 2} x2={cx + w / 2} y1={yMed} y2={yMed} stroke={color} strokeWidth={1.8} />
-                      </g>
-                    );
-                  }}
+                  type="monotone"
                   dataKey="m"
+                  stroke={color}
+                  strokeWidth={2}
+                  dot={{ r: 2.5, fill: color, stroke: "none" }}
+                  isAnimationActive={false}
                 />
-              </>
-            )}
-          </ComposedChart>
-        </ResponsiveContainer>
+              )}
+            </ComposedChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
+  );
+}
+
+/** Pure-SVG horizontal time-bucketed boxplot with hover tooltip. */
+function BoxSvg({
+  buckets, color, yMin, yMax, tMin, tMax, unit, height,
+}: {
+  buckets: { ts: number; m: number; q1: number; q3: number; min: number; max: number; n: number }[];
+  color: string; yMin: number; yMax: number; tMin: number; tMax: number; unit: string; height: number;
+}) {
+  const W = 800;
+  const H = height;
+  const padL = 32, padR = 12, padT = 8, padB = 22;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const xOf = (t: number) => padL + ((t - tMin) / Math.max(1, tMax - tMin)) * plotW;
+  const yOf = (v: number) => padT + (1 - (v - yMin) / Math.max(0.0001, yMax - yMin)) * plotH;
+  const boxW = Math.max(6, Math.min(22, plotW / Math.max(1, buckets.length) * 0.6));
+
+  // y ticks (5)
+  const ticks = Array.from({ length: 5 }, (_, i) => yMin + (i / 4) * (yMax - yMin));
+  // x ticks (5)
+  const xTicks = Array.from({ length: 5 }, (_, i) => tMin + (i / 4) * (tMax - tMin));
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="none" style={{ height }}>
+      {ticks.map((t, i) => (
+        <g key={i}>
+          <line x1={padL} x2={W - padR} y1={yOf(t)} y2={yOf(t)} stroke="var(--border)" strokeDasharray="2 4" />
+          <text x={padL - 4} y={yOf(t) + 3} textAnchor="end" fontSize={9} fill="var(--muted-foreground)">{t.toFixed(1)}</text>
+        </g>
+      ))}
+      {xTicks.map((t, i) => (
+        <text key={i} x={xOf(t)} y={H - 6} textAnchor="middle" fontSize={9} fill="var(--muted-foreground)">{fmtDate(t)}</text>
+      ))}
+      {buckets.map((b, i) => {
+        const x = xOf(b.ts);
+        const yMaxPx = yOf(b.max);
+        const yMinPx = yOf(b.min);
+        const yQ3 = yOf(b.q3);
+        const yQ1 = yOf(b.q1);
+        const yMed = yOf(b.m);
+        return (
+          <g key={i}>
+            <title>{`${fmtDate(b.ts)} · n=${b.n}\nMax ${b.max.toFixed(2)}${unit}\nQ3 ${b.q3.toFixed(2)}${unit}\nMedian ${b.m.toFixed(2)}${unit}\nQ1 ${b.q1.toFixed(2)}${unit}\nMin ${b.min.toFixed(2)}${unit}`}</title>
+            <line x1={x} x2={x} y1={yMinPx} y2={yMaxPx} stroke={color} strokeOpacity={0.5} />
+            <line x1={x - boxW / 3} x2={x + boxW / 3} y1={yMinPx} y2={yMinPx} stroke={color} strokeOpacity={0.6} />
+            <line x1={x - boxW / 3} x2={x + boxW / 3} y1={yMaxPx} y2={yMaxPx} stroke={color} strokeOpacity={0.6} />
+            <rect
+              x={x - boxW / 2}
+              y={Math.min(yQ1, yQ3)}
+              width={boxW}
+              height={Math.max(2, Math.abs(yQ3 - yQ1))}
+              fill={color} fillOpacity={0.25} stroke={color} strokeWidth={1} rx={2}
+            />
+            <line x1={x - boxW / 2} x2={x + boxW / 2} y1={yMed} y2={yMed} stroke={color} strokeWidth={1.8} />
+          </g>
+        );
+      })}
+    </svg>
   );
 }
