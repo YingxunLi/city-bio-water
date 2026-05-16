@@ -12,23 +12,27 @@ type Ctx = {
   range: TimeRange;
   setRange: (r: TimeRange) => void;
   cities: City[];
+  isGesamt: boolean;
   data: {
     wasser: ReturnType<typeof generateWasser>;
     stadt: ReturnType<typeof generateStadt>;
     bio: ReturnType<typeof generateBio>;
   };
-  // unfiltered counts (for header "live" feel)
   totals: { wasser: number; stadt: number; bio: number };
   lastUpdated: Date;
 };
 
 const FilterCtx = createContext<Ctx | null>(null);
 
+// Synthetic "Gesamt" city centered on Europe (filter bypasses distance).
+const GESAMT_CITY: City = { id: "gesamt", name: "Gesamt", lat: 50.8, lon: 8.5 };
+
 const ALL_CITIES: City[] = [
+  GESAMT_CITY,
   ...CITIES,
   ...realStadtTowns().filter((t) => !CITIES.some((c) => c.id === t.id)),
 ];
-const STUTTGART = ALL_CITIES[0];
+const STUTTGART = ALL_CITIES.find((c) => c.id === "stuttgart") ?? ALL_CITIES[1];
 
 export function FilterProvider({ children }: { children: ReactNode }) {
   const [cityId, setCityId] = useState<string>(STUTTGART.id);
@@ -37,6 +41,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const [lastUpdated] = useState(new Date());
 
   const city = useMemo(() => ALL_CITIES.find((c) => c.id === cityId) ?? STUTTGART, [cityId]);
+  const isGesamt = city.id === "gesamt";
 
   const raw = useMemo(
     () => ({
@@ -50,15 +55,17 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const data = useMemo(() => {
     const cutoff = Date.now() - range * 86400_000;
     const center: [number, number] = [city.lat, city.lon];
-    const inside = <T extends { lat: number; lon: number; date: string }>(p: T) =>
-      new Date(p.date).getTime() >= cutoff &&
-      distanceKm(center, [p.lat, p.lon]) <= radiusKm;
+    const inside = <T extends { lat: number; lon: number; date: string }>(p: T) => {
+      if (new Date(p.date).getTime() < cutoff) return false;
+      if (isGesamt) return true;
+      return distanceKm(center, [p.lat, p.lon]) <= radiusKm;
+    };
     return {
       wasser: raw.wasser.filter(inside),
       stadt: raw.stadt.filter(inside),
       bio: raw.bio.filter(inside),
     };
-  }, [raw, city, radiusKm, range]);
+  }, [raw, city, radiusKm, range, isGesamt]);
 
   const totals = {
     wasser: raw.wasser.length,
@@ -76,6 +83,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
         range,
         setRange,
         cities: ALL_CITIES,
+        isGesamt,
         data,
         totals,
         lastUpdated,
