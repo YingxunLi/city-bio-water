@@ -19,7 +19,7 @@ const ranges: { v: TimeRange; label: string }[] = [
 ];
 
 export function FilterBar({ compact = false }: { compact?: boolean }) {
-  const { city, setCity, cities, radiusKm, setRadiusKm, range, setRange } = useFilters();
+  const { city, setCity, cities, radiusKm, setRadiusKm, range, setRange, isGesamt } = useFilters();
 
   const containerCls = compact
     ? "flex flex-col gap-3"
@@ -50,7 +50,7 @@ export function FilterBar({ compact = false }: { compact?: boolean }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 flex-1 min-w-0">
+      <div className={`flex items-center gap-3 flex-1 min-w-0 ${isGesamt ? "opacity-40 pointer-events-none" : ""}`}>
         <div className="size-9 rounded-full bg-muted flex items-center justify-center shrink-0">
           <Radius className="size-4 text-muted-foreground" />
         </div>
@@ -59,7 +59,9 @@ export function FilterBar({ compact = false }: { compact?: boolean }) {
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
               {de.filters.radius}
             </div>
-            <div className="text-xs font-semibold stat-number">{radiusKm} km</div>
+            <div className="text-xs font-semibold stat-number">
+              {isGesamt ? "—" : `${radiusKm} km`}
+            </div>
           </div>
           <Slider
             value={[radiusKm]}
