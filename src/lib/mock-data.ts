@@ -51,6 +51,7 @@ export type WasserPoint = {
   fu: number; // 1-21 Forel-Ule scale
   ph: number;
   transparenz: number; // m
+  device: string;
   date: string;
 };
 
@@ -125,6 +126,8 @@ function dateInRange(rand: () => number, days: number) {
 
 const N_DAYS_POOL = 365; // generate one year, filter later
 
+const DEVICES = ["EML-L29", "iPhone 13", "Samsung SM-A536B", "Pixel 7", "iPhone 15 Pro", "Xiaomi 13"];
+
 export function generateWasser(city: City, count = 220): WasserPoint[] {
   const rand = mulberry32(hash("wasser_" + city.id));
   return Array.from({ length: count }, (_, i) => {
@@ -137,6 +140,7 @@ export function generateWasser(city: City, count = 220): WasserPoint[] {
       fu,
       ph: +(6.5 + rand() * 2.2).toFixed(2),
       transparenz: +(0.2 + rand() * 6).toFixed(2),
+      device: DEVICES[Math.floor(rand() * DEVICES.length)],
       date: dateInRange(rand, N_DAYS_POOL),
     };
   });
@@ -170,11 +174,31 @@ export function fuColor(fu: number) {
   return FU_COLORS[Math.max(0, Math.min(20, Math.round(fu) - 1))];
 }
 
-// NEST score color: stadt CI ramp
+// NEST score color: green (high/good) → yellow → orange → red (low)
+const NEST_RAMP = [
+  { t: 0, c: "#d7191c" },
+  { t: 0.25, c: "#fdae61" },
+  { t: 0.5, c: "#ffffbf" },
+  { t: 0.75, c: "#a6d96a" },
+  { t: 1, c: "#1a9850" },
+];
+function mixHex(a: string, b: string, k: number) {
+  const pa = [parseInt(a.slice(1, 3), 16), parseInt(a.slice(3, 5), 16), parseInt(a.slice(5, 7), 16)];
+  const pb = [parseInt(b.slice(1, 3), 16), parseInt(b.slice(3, 5), 16), parseInt(b.slice(5, 7), 16)];
+  const m = pa.map((v, i) => Math.round(v + (pb[i] - v) * k));
+  return `rgb(${m[0]},${m[1]},${m[2]})`;
+}
 export function nestColor(score: number) {
-  // light → saturated stadt
   const t = Math.max(0, Math.min(1, score / 100));
-  return `color-mix(in oklab, #F0A08C ${20 + t * 70}%, white)`;
+  for (let i = 1; i < NEST_RAMP.length; i++) {
+    if (t <= NEST_RAMP[i].t) {
+      const a = NEST_RAMP[i - 1];
+      const b = NEST_RAMP[i];
+      const k = (t - a.t) / (b.t - a.t);
+      return mixHex(a.c, b.c, k);
+    }
+  }
+  return NEST_RAMP[NEST_RAMP.length - 1].c;
 }
 
 // distance helper (km)
