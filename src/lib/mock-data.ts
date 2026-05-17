@@ -174,13 +174,16 @@ export function fuColor(fu: number) {
   return FU_COLORS[Math.max(0, Math.min(20, Math.round(fu) - 1))];
 }
 
-// NEST score color: green (high/good) → yellow → orange → red (low)
+// NEST score color ramp matching the official "Overall NEST score" legend
+// (dark navy low → cyan → off-white near 50 → orange → dark red high).
 const NEST_RAMP = [
-  { t: 0, c: "#d7191c" },
-  { t: 0.25, c: "#fdae61" },
-  { t: 0.5, c: "#ffffbf" },
-  { t: 0.75, c: "#a6d96a" },
-  { t: 1, c: "#1a9850" },
+  { t: 0, c: "#0b1a3a" },
+  { t: 0.2, c: "#1e62a8" },
+  { t: 0.4, c: "#6dc7d6" },
+  { t: 0.5, c: "#f1ece4" },
+  { t: 0.6, c: "#f4b65a" },
+  { t: 0.8, c: "#c44a2a" },
+  { t: 1, c: "#5b0f0c" },
 ];
 function mixHex(a: string, b: string, k: number) {
   const pa = [parseInt(a.slice(1, 3), 16), parseInt(a.slice(3, 5), 16), parseInt(a.slice(5, 7), 16)];
