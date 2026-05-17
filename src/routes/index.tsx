@@ -25,7 +25,7 @@ export const Route = createFileRoute("/")({
 type Tab = "quellen" | "stats";
 
 function HomePage() {
-  const { data, range, city } = useFilters();
+  const { data, range } = useFilters();
   const [tab, setTab] = useState<Tab>("quellen");
 
   const allPoints: MapPoint[] = [
