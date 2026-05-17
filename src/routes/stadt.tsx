@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useFilters } from "@/lib/filter-context";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { de } from "@/lib/i18n";
 import { FilterBar } from "@/components/filter-bar";
 import { GeoMap, type MapPoint } from "@/components/geo-map";
