@@ -108,7 +108,7 @@ export function MetricChart({
   const yMax = domain ? domain[1] : Math.max(...values.map((p) => p.v), 1);
 
   return (
-    <div className="space-y-3 h-full flex flex-col">
+    <div className="space-y-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <span className="size-2 rounded-full" style={{ background: color }} />
@@ -125,7 +125,7 @@ export function MetricChart({
         />
       </div>
 
-      <div className="flex-1 min-h-0" style={{ minHeight: height }}>
+      <div style={{ width: "100%", height }}>
         {mode === "box" ? (
           <BoxSvg
             buckets={buckets}
