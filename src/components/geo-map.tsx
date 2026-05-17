@@ -86,7 +86,7 @@ function GeoMapInner({ points, height = 380, heat = false, flush = false }: Prop
           />
         )}
         {heat ? (
-          <HeatLayer points={points} />
+          <HeatLayer points={points} mapRef={mapRef} />
         ) : (
           points.map((p) => (
             <CircleMarker
@@ -124,9 +124,7 @@ function GeoMapInner({ points, height = 380, heat = false, flush = false }: Prop
 }
 
 /** Real heatmap layer using leaflet.heat. Loads leaflet first and binds to window.L. */
-function HeatLayer({ points }: { points: MapPoint[] }) {
-  const RL = useClientModule(() => import("react-leaflet"));
-  const map = RL?.useMap();
+function HeatLayer({ points, mapRef }: { points: MapPoint[]; mapRef: { current: any } }) {
   const [ready, setReady] = useState(false);
   const data = useMemo(
     () =>
@@ -157,28 +155,61 @@ function HeatLayer({ points }: { points: MapPoint[] }) {
   }, []);
 
   useEffect(() => {
-    if (!ready || !map) return;
+    const map = mapRef.current;
+    if (!ready || !map || data.length === 0) return;
     const Lns: any = (window as any).L;
     if (!Lns?.heatLayer) return;
-    const layer = Lns.heatLayer(data, {
-      radius: 25,
-      blur: 18,
-      maxZoom: 17,
-      minOpacity: 0.25,
-      gradient: {
-        0.0: "rgba(44,123,182,0)",
-        0.2: "#2c7bb6",
-        0.4: "#abd9e9",
-        0.6: "#ffffbf",
-        0.8: "#fdae61",
-        1.0: "#d7191c",
-      },
-    });
-    layer.addTo(map);
-    return () => {
-      try { map.removeLayer(layer); } catch { /* noop */ }
+    let cancelled = false;
+    let layer: any = null;
+    let frame = 0;
+
+    const createLayer = () => {
+      const size = typeof map.getSize === "function" ? map.getSize() : null;
+      if (!size || size.x <= 0 || size.y <= 0) {
+        return false;
+      }
+
+      try {
+        layer = Lns.heatLayer(data, {
+          radius: 25,
+          blur: 18,
+          maxZoom: 17,
+          minOpacity: 0.25,
+          gradient: {
+            0.0: "rgba(44,123,182,0)",
+            0.2: "#2c7bb6",
+            0.4: "#abd9e9",
+            0.6: "#ffffbf",
+            0.8: "#fdae61",
+            1.0: "#d7191c",
+          },
+        });
+        layer.addTo(map);
+        return true;
+      } catch (e) {
+        console.error("leaflet.heat add failed", e);
+        return false;
+      }
     };
-  }, [ready, map, data]);
+
+    const tryAttach = () => {
+      if (cancelled) return;
+      if (createLayer()) return;
+      frame = window.requestAnimationFrame(tryAttach);
+    };
+
+    tryAttach();
+
+    return () => {
+      cancelled = true;
+      if (frame) window.cancelAnimationFrame(frame);
+      try {
+        if (layer) map.removeLayer(layer);
+      } catch {
+        /* noop */
+      }
+    };
+  }, [ready, data, mapRef]);
 
   return null;
 }

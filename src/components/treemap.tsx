@@ -100,11 +100,23 @@ export function Treemap({
   const W = 1000;
   const H = 1000;
   const rects = useMemo(() => squarify(items, W, H), [items]);
+  const [scoreMin, scoreMax] = useMemo(() => {
+    if (!items.length) return [0, 100] as const;
+    let min = Infinity;
+    let max = -Infinity;
+    for (const item of items) {
+      if (item.score < min) min = item.score;
+      if (item.score > max) max = item.score;
+    }
+    return [min, max] as const;
+  }, [items]);
+  const scoreSpan = Math.max(1, scoreMax - scoreMin);
 
   return (
     <div className="relative w-full rounded-lg overflow-hidden" style={{ height }}>
       {rects.map((r) => {
-        const op = 0.18 + (Math.max(0, Math.min(100, r.item.score)) / 100) * 0.72;
+        const normalized = Math.max(0, Math.min(1, (r.item.score - scoreMin) / scoreSpan));
+        const op = 0.18 + normalized * 0.72;
         const label = r.item.label ?? r.item.key;
         const showText = r.w > 90 && r.h > 36;
         return (

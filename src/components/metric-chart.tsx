@@ -6,7 +6,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  Scatter,
   Line,
 } from "recharts";
 import { ViewToggle } from "@/components/ui-bits";
@@ -172,12 +171,14 @@ export function MetricChart({
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null;
                   const p = payload[0].payload;
+                  const value = mode === "points" ? p.v : mode === "line" ? p.m : p.v;
+                  const date = p.ts ? fmtFull(p.ts) : "";
                   return (
                     <div className="rounded-xl border border-border bg-popover p-2.5 text-[11px] shadow-md">
                       <div className="font-medium stat-number text-foreground">
-                        {(mode === "line" ? p.m : p.v).toFixed(2)}{unit}
+                        {value.toFixed(2)}{unit}
                       </div>
-                      <div className="text-muted-foreground">{fmtFull(p.ts)}</div>
+                      <div className="text-muted-foreground">{date}</div>
                       {p.meta?.lat != null && (
                         <div className="text-muted-foreground stat-number">
                           lat={p.meta.lat.toFixed(5)} · lon={p.meta.lon.toFixed(5)}
@@ -188,7 +189,15 @@ export function MetricChart({
                 }}
               />
               {mode === "points" && (
-                <Scatter data={points} fill={color} fillOpacity={0.7} stroke="none" shape="circle" />
+                <Line
+                  data={points}
+                  type="linear"
+                  dataKey="v"
+                  stroke="transparent"
+                  dot={{ r: 3.5, fill: color, stroke: "none" }}
+                  activeDot={{ r: 5, fill: color, stroke: "var(--background)", strokeWidth: 1.5 }}
+                  isAnimationActive={false}
+                />
               )}
               {mode === "line" && (
                 <Line
@@ -231,7 +240,7 @@ function BoxSvg({
   const xTicks = Array.from({ length: 5 }, (_, i) => tMin + (i / 4) * (tMax - tMin));
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="none" style={{ height }}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="block w-full h-full" preserveAspectRatio="xMidYMid meet" style={{ height }}>
       {ticks.map((t, i) => (
         <g key={i}>
           <line x1={padL} x2={W - padR} y1={yOf(t)} y2={yOf(t)} stroke="var(--border)" strokeDasharray="2 4" />

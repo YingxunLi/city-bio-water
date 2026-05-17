@@ -99,11 +99,13 @@ export function RadarBox({
   domain,
   color,
   size = 320,
+  labelFontSize,
 }: {
   stats: BoxStats[];
   domain: [number, number];
   color: string;
   size?: number;
+  labelFontSize?: number;
 }) {
   const cx = size / 2;
   const cy = size / 2;
@@ -188,7 +190,7 @@ export function RadarBox({
             y={y}
             textAnchor="middle"
             dominantBaseline="middle"
-            fontSize={11}
+            fontSize={labelFontSize ?? 11}
             fill="var(--muted-foreground)"
           >
             {s.key}

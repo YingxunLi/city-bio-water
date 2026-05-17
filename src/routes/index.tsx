@@ -60,13 +60,9 @@ function HomePage() {
   return (
     <MapDashboard
       map={<GeoMap points={allPoints} flush />}
-      overlay={
-        <FloatingCard>
-          <FilterBar compact />
-        </FloatingCard>
-      }
+      overlay={<FilterBar compact />}
       mapLegend={
-        <FloatingCard className="!p-2 flex flex-col gap-1.5">
+        <FloatingCard className="!p-1 !px-2 flex flex-col gap-1">
           <Legend dot="#243285" label="Wasser" />
           <Legend dot="#F0A08C" label="Stadt" />
           <Legend dot="#00A36F" label="Biodiversität" />

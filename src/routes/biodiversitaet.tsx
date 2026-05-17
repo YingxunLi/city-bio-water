@@ -45,7 +45,14 @@ function BioPage() {
     lon: p.lon,
     color: CAT_COLORS[p.category] ?? BIO,
     radius: p.threatened ? 7 : p.invasive ? 6 : 4,
-    tooltip: `<b>${p.species}</b><br/>${p.category}${p.invasive ? " · invasiv" : ""}${p.threatened ? " · bedroht" : ""}`,
+    tooltip: `
+      <div>
+        <div><b>${p.species}</b></div>
+        <div>${p.category}${p.invasive ? " · invasiv" : ""}${p.threatened ? " · bedroht" : ""}</div>
+        <div>Ort: ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div>
+        <div>Zeit: ${new Date(p.date).toLocaleString('de-DE')}</div>
+      </div>
+    `,
   }));
 
   const ts = bucketByDay(data.bio, range);
@@ -75,11 +82,7 @@ function BioPage() {
   return (
     <MapDashboard
       map={<GeoMap points={points} heat={mapMode === "heat"} baseColor={BIO} flush />}
-      overlay={
-        <FloatingCard>
-          <FilterBar compact />
-        </FloatingCard>
-      }
+      overlay={<FilterBar compact />}
       mapControls={
         <FloatingCard className="!p-1">
           <ViewToggle

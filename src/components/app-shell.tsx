@@ -1,4 +1,5 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { de } from "@/lib/i18n";
 import { useFilters } from "@/lib/filter-context";
 import { ClientOnly } from "@/components/client-only";
@@ -24,27 +25,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <img src={parkliLogo} alt="ParKli" className="h-7 w-auto" />
         </Link>
 
-        {/* Mobile: dropdown */}
+        {/* Mobile: custom dropdown (styled, not native) */}
         <div className="ml-auto md:hidden relative">
-          <select
-            aria-label="Bereich auswählen"
+            <MobileMenu
+            items={items}
             value={current.to}
-            onChange={(e) => navigate({ to: e.target.value as any })}
-            className="appearance-none text-sm font-medium pl-3 pr-8 py-1.5 rounded-full border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            style={{
-              backgroundImage:
-                "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>\")",
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "right 10px center",
-              backgroundSize: "12px 12px",
-            }}
-          >
-            {items.map((it) => (
-              <option key={it.to} value={it.to}>
-                {it.label}
-              </option>
-            ))}
-          </select>
+            onChange={(to) => navigate({ to: to as any })}
+          />
         </div>
 
         {/* Desktop: tabs */}
@@ -85,6 +72,56 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <main className="flex-1 min-h-0 md:overflow-hidden">{children}</main>
+    </div>
+  );
+}
+
+function MobileMenu({
+  items,
+  value,
+  onChange,
+}: {
+  items: { to: string; label: string; accent?: string }[];
+  value: string;
+  onChange: (to: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const current = items.find((it) => it.to === value) ?? items[0];
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center text-sm font-medium pl-3 pr-3 py-1.5 rounded-full border border-border bg-card text-foreground"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className="truncate max-w-[160px]">{current.label}</span>
+        <svg className="ml-2 size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <polyline points="6 9 12 15 18 9" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+            <ul
+              role="listbox"
+              className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-[9999]"
+        >
+          {items.map((it) => (
+            <li key={it.to} role="option">
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(it.to);
+                  setOpen(false);
+                }}
+                className={`w-full text-left px-4 py-2 text-sm ${it.to === value ? "font-medium text-foreground bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+              >
+                {it.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -41,7 +41,14 @@ function StadtPage() {
     lon: p.lon,
     color: nestColor(p.nest),
     radius: 6,
-    tooltip: `<b>NEST ${p.nest}</b> · ${p.type}`,
+    tooltip: `
+      <div>
+        <div><b>NEST ${p.nest}</b></div>
+        ${p.name ? `<div>${p.name}</div>` : ""}
+        <div>Ort: ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div>
+        <div>gstypology: ${p.gstypology ?? p.type}</div>
+      </div>
+    `,
   }));
 
   const ts = bucketByDay(data.stadt, range);
@@ -85,11 +92,7 @@ function StadtPage() {
   return (
     <MapDashboard
       map={<GeoMap points={points} heat={mapMode === "heat"} baseColor={STADT} flush />}
-      overlay={
-        <FloatingCard>
-          <FilterBar compact />
-        </FloatingCard>
-      }
+      overlay={<FilterBar compact />}
       mapControls={
         <FloatingCard className="!p-1">
           <ViewToggle
@@ -147,12 +150,13 @@ function StadtPage() {
               catMetrics.length === 0 ? <Empty /> : (
                 <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-5 items-start">
                   <div className="flex justify-center">
-                    <RadarBox
-                      stats={catMetrics.map((m) => computeBox(m.values, m.key))}
-                      domain={[0, 100]}
-                      color={STADT}
-                      size={240}
-                    />
+                        <RadarBox
+                          stats={catMetrics.map((m) => computeBox(m.values, m.key))}
+                          domain={[0, 100]}
+                          color={STADT}
+                          size={isMobile ? 220 : 240}
+                          labelFontSize={isMobile ? 10 : 11}
+                        />
                   </div>
                   <div className="space-y-2 self-center">
                     {catMetrics.map((m) => (
@@ -247,7 +251,7 @@ function Stat({
 function NestLegendVertical() {
   return (
     <div
-      className="rounded-2xl border border-border p-2 flex items-stretch gap-1.5"
+      className="rounded-2xl border border-border p-1 flex items-stretch gap-1"
       style={{
         background: "color-mix(in oklab, white 92%, transparent)",
         backdropFilter: "saturate(180%) blur(20px)",
@@ -256,7 +260,7 @@ function NestLegendVertical() {
       }}
       title="NEST Score 0–100"
     >
-      <div className="flex flex-col text-[9px] text-muted-foreground stat-number justify-between leading-none w-6 text-right">
+      <div className="flex flex-col text-[9px] text-muted-foreground stat-number justify-between leading-none w-5 text-right">
         {[100, 80, 60, 40, 20, 0].map((n) => <span key={n}>{n}</span>)}
       </div>
       <div className="w-3 rounded-full overflow-hidden flex flex-col">

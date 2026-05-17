@@ -54,8 +54,8 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  --font-sans: "Roboto", "Noto Sans", ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", "Helvetica Neue", Helvetica, Arial, "Noto Sans", sans-serif;
 }
 
 :root {
@@ -142,6 +142,9 @@
   }
   /* let leaflet handle its own gestures only inside the map */
   .leaflet-container { touch-action: none; }
+  svg, svg text, svg tspan {
+    font-family: var(--font-sans);
+  }
 }
 
 @layer components {

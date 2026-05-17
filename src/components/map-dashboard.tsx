@@ -37,9 +37,9 @@ export function MapDashboard({
         {/* Fixed background map */}
         <div className="fixed inset-x-0 top-14 bottom-0 z-0">{map}</div>
 
-        {/* Centered, collapsible city/filter overlay */}
+        {/* Centered, collapsible city/filter overlay (mobile): render raw content — no extra card */}
         {overlay && (
-          <div className="fixed top-[60px] left-0 right-0 z-[500] flex justify-center px-4 pointer-events-none">
+          <div className="fixed top-[60px] left-0 right-0 z-[700] flex justify-center px-4 pointer-events-none">
             <div className="w-full max-w-[420px] pointer-events-auto">
               <MobileCollapsible>{overlay}</MobileCollapsible>
             </div>
@@ -76,14 +76,18 @@ export function MapDashboard({
       {/* ---------- Desktop ---------- */}
       <div className="hidden md:block relative h-full isolate">
         <div className="absolute inset-0 z-0">{map}</div>
-        {overlay && <div className="absolute top-5 left-5 z-[500] w-[340px]">{overlay}</div>}
+        {overlay && (
+          <div className="absolute top-5 left-5 z-[500] w-[340px]">
+            <FloatingCard>{overlay}</FloatingCard>
+          </div>
+        )}
         {mapControls && (
           <div className="absolute z-[500] left-5" style={{ bottom: "calc(38vh + 24px)" }}>
             {mapControls}
           </div>
         )}
         {mapLegend && (
-          <div className="absolute right-5 z-[500]" style={{ bottom: "calc(38vh + 92px)" }}>
+          <div className="absolute top-5 right-5 z-[500]">
             {mapLegend}
           </div>
         )}

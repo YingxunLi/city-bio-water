@@ -66,6 +66,8 @@ export type StadtPoint = {
   biodiversity: number;
   greenCare: number;
   type: StadtType;
+  name?: string;
+  gstypology?: string;
   date: string;
 };
 

@@ -117,6 +117,8 @@ function loadStadt() {
       biodiversity: Math.round(num(row[iNA])),
       greenCare: Math.round(num(row[iUS])),
       type: safeType,
+      name: (row[iName] || "").trim(),
+      gstypology: rawType,
       date,
     });
     const town = (row[iTown] || row[iName] || "").trim();

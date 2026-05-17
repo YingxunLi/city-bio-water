@@ -82,11 +82,7 @@ function WasserPage() {
   return (
     <MapDashboard
       map={<GeoMap points={points} heat={mapMode === "heat"} baseColor={WASSER} flush />}
-      overlay={
-        <FloatingCard>
-          <FilterBar compact />
-        </FloatingCard>
-      }
+      overlay={<FilterBar compact />}
       mapControls={
         <FloatingCard className="!p-1">
           <ViewToggle
