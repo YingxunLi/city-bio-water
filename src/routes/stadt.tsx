@@ -30,6 +30,7 @@ type TypView = "anzahl" | "score" | "tree";
 
 function StadtPage() {
   const { data, range } = useFilters();
+  const isMobile = useIsMobile();
   const [mapMode, setMapMode] = useState<"points" | "heat">("points");
   const [tab, setTab] = useState<Tab>("stats");
   const [typView, setTypView] = useState<TypView>("anzahl");
