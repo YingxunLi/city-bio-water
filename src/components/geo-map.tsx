@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ClientOnly, useClientModule } from "./client-only";
 import { useFilters } from "@/lib/filter-context";
 import { Plus, Minus } from "lucide-react";
@@ -9,19 +9,15 @@ export type MapPoint = {
   lon: number;
   color: string;
   radius?: number;
-  /** Pre-rendered HTML for the leaflet tooltip. */
   tooltip?: string;
-  /** Weight for heatmap intensity (defaults to 1). */
   weight?: number;
 };
 
 type Props = {
   points: MapPoint[];
   height?: number | string;
-  /** When true, render a real heatmap layer (leaflet.heat). */
   heat?: boolean;
   baseColor?: string;
-  /** Drop rounded border so the map can sit flush as a background. */
   flush?: boolean;
 };
 
@@ -118,6 +114,7 @@ function GeoMapInner({ points, height = 380, heat = false, flush = false }: Prop
         )}
       </MapContainer>
 
+      {/* Zoom controls: bottom-right, desktop only */}
       <MapZoomControls
         onZoomIn={() => mapRef.current?.zoomIn?.()}
         onZoomOut={() => mapRef.current?.zoomOut?.()}
@@ -126,43 +123,62 @@ function GeoMapInner({ points, height = 380, heat = false, flush = false }: Prop
   );
 }
 
-/** Real heatmap layer using leaflet.heat. */
+/** Real heatmap layer using leaflet.heat. Loads leaflet first and binds to window.L. */
 function HeatLayer({ points }: { points: MapPoint[] }) {
   const RL = useClientModule(() => import("react-leaflet"));
-  const heatMod = useClientModule(() => import("leaflet.heat") as any);
   const map = RL?.useMap();
-  const layerRef = useRef<any>(null);
+  const [ready, setReady] = useState(false);
   const data = useMemo(
     () =>
-      points.map((p) => [p.lat, p.lon, p.weight ?? 1] as [number, number, number]),
+      points.map((p) => [p.lat, p.lon, p.weight ?? 0.6] as [number, number, number]),
     [points],
   );
 
+  // Initialise leaflet.heat exactly once on the client. It is a side-effect
+  // plugin that expects a global window.L to already exist.
   useEffect(() => {
-    if (!map || !heatMod) return;
-    const w = window as any;
-    const L = w.L;
-    if (!L || !L.heatLayer) return;
-    const layer = L.heatLayer(data, {
-      radius: 28,
-      blur: 22,
+    let cancelled = false;
+    (async () => {
+      try {
+        const Lmod: any = await import("leaflet");
+        const Lns = Lmod.default ?? Lmod;
+        (window as any).L = Lns;
+        if (!Lns.heatLayer) {
+          await import("leaflet.heat");
+        }
+        if (!cancelled) setReady(true);
+      } catch (e) {
+        console.error("leaflet.heat init failed", e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !map) return;
+    const Lns: any = (window as any).L;
+    if (!Lns?.heatLayer) return;
+    const layer = Lns.heatLayer(data, {
+      radius: 25,
+      blur: 18,
       maxZoom: 17,
-      max: 1.0,
-      minOpacity: 0.35,
+      minOpacity: 0.25,
       gradient: {
-        0.0: "#2c7bb6",
-        0.25: "#abd9e9",
-        0.5: "#ffffbf",
-        0.75: "#fdae61",
+        0.0: "rgba(44,123,182,0)",
+        0.2: "#2c7bb6",
+        0.4: "#abd9e9",
+        0.6: "#ffffbf",
+        0.8: "#fdae61",
         1.0: "#d7191c",
       },
     });
     layer.addTo(map);
-    layerRef.current = layer;
     return () => {
-      map.removeLayer(layer);
+      try { map.removeLayer(layer); } catch { /* noop */ }
     };
-  }, [map, heatMod, data]);
+  }, [ready, map, data]);
 
   return null;
 }
@@ -170,7 +186,7 @@ function HeatLayer({ points }: { points: MapPoint[] }) {
 function MapZoomControls({ onZoomIn, onZoomOut }: { onZoomIn: () => void; onZoomOut: () => void }) {
   return (
     <div
-      className="absolute z-[600] right-3 md:right-5 top-3 md:top-5 flex flex-col rounded-2xl border border-border overflow-hidden"
+      className="hidden md:flex absolute z-[600] right-5 bottom-[calc(38vh+24px)] flex-col rounded-2xl border border-border overflow-hidden"
       style={{
         background: "color-mix(in oklab, white 92%, transparent)",
         backdropFilter: "saturate(180%) blur(20px)",
@@ -182,6 +198,7 @@ function MapZoomControls({ onZoomIn, onZoomOut }: { onZoomIn: () => void; onZoom
         onClick={onZoomIn}
         aria-label="Vergrößern"
         className="size-9 grid place-items-center hover:bg-muted/60 transition-colors"
+        type="button"
       >
         <Plus className="size-4" />
       </button>
@@ -190,6 +207,7 @@ function MapZoomControls({ onZoomIn, onZoomOut }: { onZoomIn: () => void; onZoom
         onClick={onZoomOut}
         aria-label="Verkleinern"
         className="size-9 grid place-items-center hover:bg-muted/60 transition-colors"
+        type="button"
       >
         <Minus className="size-4" />
       </button>

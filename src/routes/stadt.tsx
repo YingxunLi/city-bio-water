@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useFilters } from "@/lib/filter-context";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { de } from "@/lib/i18n";
 import { FilterBar } from "@/components/filter-bar";
 import { GeoMap, type MapPoint } from "@/components/geo-map";
@@ -29,6 +30,7 @@ type TypView = "anzahl" | "score" | "tree";
 
 function StadtPage() {
   const { data, range } = useFilters();
+  const isMobile = useIsMobile();
   const [mapMode, setMapMode] = useState<"points" | "heat">("points");
   const [tab, setTab] = useState<Tab>("stats");
   const [typView, setTypView] = useState<TypView>("anzahl");
@@ -110,21 +112,8 @@ function StadtPage() {
               { v: "stats", label: "Statistik" },
               { v: "kategorien", label: "Score-Kategorien" },
               { v: "typen", label: de.stadt.sources },
-              { v: "verlauf", label: de.common.overTime },
+              ...(isMobile ? [] : [{ v: "verlauf" as Tab, label: de.common.overTime }]),
             ]}
-            right={
-              tab === "typen" ? (
-                <ViewToggle
-                  value={typView}
-                  onChange={setTypView}
-                  options={[
-                    { v: "anzahl", label: "Anzahl" },
-                    { v: "score", label: "Score" },
-                    { v: "tree", label: "Treemap" },
-                  ]}
-                />
-              ) : null
-            }
           />
           <PanelBody>
             {tab === "stats" && (
@@ -175,44 +164,62 @@ function StadtPage() {
             )}
 
             {tab === "typen" && (
-              byType.length === 0 ? <Empty /> :
-              typView === "anzahl" ? (
-                <div className="space-y-2">
-                  {byType.map((b) => (
-                    <div
-                      key={b.type}
-                      className="grid grid-cols-[160px_1fr_60px] items-center gap-3"
-                      title={`${b.type}\nAnzahl ${b.count}\nØ Score ${b.score}`}
-                    >
-                      <div className="text-xs truncate">{b.type}</div>
-                      <div className="h-5 bg-muted rounded-md overflow-hidden">
-                        <div
-                          className="h-full rounded-md transition-all"
-                          style={{ width: `${(b.count / maxCount) * 100}%`, background: STADT, opacity: 0.85 }}
-                        />
-                      </div>
-                      <div className="text-[11px] text-muted-foreground stat-number text-right">{b.count}</div>
+              byType.length === 0 ? <Empty /> : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <span className="size-2 rounded-full" style={{ background: STADT }} />
+                      <span className="text-xs font-medium">{de.stadt.sources}</span>
                     </div>
-                  ))}
+                    <ViewToggle
+                      value={typView}
+                      onChange={setTypView}
+                      options={[
+                        { v: "anzahl", label: "Anzahl" },
+                        { v: "score", label: "Score" },
+                        { v: "tree", label: "Treemap" },
+                      ]}
+                    />
+                  </div>
+                  {typView === "anzahl" ? (
+                    <div className="space-y-2">
+                      {byType.map((b) => (
+                        <div
+                          key={b.type}
+                          className="grid grid-cols-[160px_1fr_60px] items-center gap-3"
+                          title={`${b.type}\nAnzahl ${b.count}\nØ Score ${b.score}`}
+                        >
+                          <div className="text-xs truncate">{b.type}</div>
+                          <div className="h-5 bg-muted rounded-md overflow-hidden">
+                            <div
+                              className="h-full rounded-md transition-all"
+                              style={{ width: `${(b.count / maxCount) * 100}%`, background: STADT, opacity: 0.85 }}
+                            />
+                          </div>
+                          <div className="text-[11px] text-muted-foreground stat-number text-right">{b.count}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : typView === "score" ? (
+                    <div className="space-y-2.5">
+                      {byType.map((b) => (
+                        <BoxRow key={b.type} stats={computeBox(b.values, b.type)} domain={[0, 100]} color={STADT} />
+                      ))}
+                    </div>
+                  ) : (
+                    <Treemap
+                      items={byType.map((b) => ({ key: b.type, label: b.type, value: b.count, score: b.score }))}
+                      color={STADT}
+                      height={230}
+                    />
+                  )}
                 </div>
-              ) : typView === "score" ? (
-                <div className="space-y-2.5">
-                  {byType.map((b) => (
-                    <BoxRow key={b.type} stats={computeBox(b.values, b.type)} domain={[0, 100]} color={STADT} />
-                  ))}
-                </div>
-              ) : (
-                <Treemap
-                  items={byType.map((b) => ({ key: b.type, label: b.type, value: b.count, score: b.score }))}
-                  color={STADT}
-                  height={230}
-                />
               )
             )}
 
-            {tab === "verlauf" && (
+            {tab === "verlauf" && !isMobile && (
               data.stadt.length === 0 ? <Empty /> :
-              <MetricChart values={ptsNest} color={STADT} rangeDays={range} label={de.stadt.nest} domain={[0, 100]} height={210} />
+              <MetricChart values={ptsNest} color={STADT} rangeDays={range} label={de.stadt.nest} domain={[0, 100]} height={220} />
             )}
           </PanelBody>
         </>

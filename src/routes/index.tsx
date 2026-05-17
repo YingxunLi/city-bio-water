@@ -25,7 +25,7 @@ export const Route = createFileRoute("/")({
 type Tab = "quellen" | "stats";
 
 function HomePage() {
-  const { data, range, city } = useFilters();
+  const { data, range } = useFilters();
   const [tab, setTab] = useState<Tab>("quellen");
 
   const allPoints: MapPoint[] = [
@@ -62,9 +62,6 @@ function HomePage() {
       map={<GeoMap points={allPoints} flush />}
       overlay={
         <FloatingCard>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
-            {city.name}
-          </div>
           <FilterBar compact />
         </FloatingCard>
       }

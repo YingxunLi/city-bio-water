@@ -1,17 +1,20 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 
 /**
  * Layout: full-bleed map with floating overlays and a docked bottom panel.
  *
- * Slot positions (desktop):
- *   - overlay    : top-left  (filters)
- *   - mapLegend  : right side, vertically centered between header and panel
- *   - zoom ctrls : top-right (inside <map> component itself)
- *   - panel      : docked bottom, scrollable internally
+ * Desktop slot positions:
+ *   - overlay   : top-left  (filters)
+ *   - mapLegend : right side, vertically aligned above the zoom controls
+ *   - zoom      : bottom-right (inside <map>, above docked panel)
+ *   - panel     : docked bottom, scrollable internally
  *
  * Mobile:
  *   - header (in AppShell) is sticky at top
- *   - the map sits below the header and stays fixed in the background
+ *   - map sits below the header and stays fixed in the background
+ *   - city/filter overlay is centered, collapsible
+ *   - legend is on the right edge, near the bottom-sheet
  *   - panel content scrolls above the map as a sheet
  */
 export function MapDashboard({
@@ -29,24 +32,40 @@ export function MapDashboard({
 }) {
   return (
     <>
-      {/* Mobile: map is fixed background, content scrolls over it */}
-      <div className="md:hidden relative">
-        <div className="fixed inset-x-0 top-14 h-[55vh] z-0">
-          <div className="absolute inset-0">{map}</div>
-          {overlay && (
-            <div className="absolute top-3 left-3 right-16 z-[500]">{overlay}</div>
-          )}
-          {mapLegend && (
-            <div className="absolute bottom-3 right-3 z-[500]">{mapLegend}</div>
-          )}
-          {mapControls && (
-            <div className="absolute bottom-3 left-3 z-[500]">{mapControls}</div>
-          )}
-        </div>
-        {/* spacer to push sheet below map area */}
-        <div style={{ height: "calc(55vh - 24px)" }} />
+      {/* ---------- Mobile ---------- */}
+      <div className="md:hidden">
+        {/* Fixed background map */}
+        <div className="fixed inset-x-0 top-14 bottom-0 z-0">{map}</div>
+
+        {/* Centered, collapsible city/filter overlay */}
+        {overlay && (
+          <div className="fixed top-[60px] left-0 right-0 z-[500] flex justify-center px-4 pointer-events-none">
+            <div className="w-full max-w-[420px] pointer-events-auto">
+              <MobileCollapsible>{overlay}</MobileCollapsible>
+            </div>
+          </div>
+        )}
+
+        {/* Heatmap toggle: pinned just above the bottom sheet */}
+        {mapControls && (
+          <div className="fixed left-4 z-[500]" style={{ bottom: "calc(45vh + 16px)" }}>
+            {mapControls}
+          </div>
+        )}
+
+        {/* Legend: right edge, just above the bottom sheet */}
+        {mapLegend && (
+          <div className="fixed right-3 z-[500]" style={{ bottom: "calc(45vh + 16px)" }}>
+            {mapLegend}
+          </div>
+        )}
+
+        {/* Spacer pushes the bottom sheet below the visible map area */}
+        <div style={{ height: "calc(100vh - 14px - 45vh)" }} aria-hidden />
+
+        {/* Bottom sheet — scrolls above the fixed map */}
         <div
-          className="relative z-[700] rounded-t-3xl border-t border-border bg-card px-4 py-5 space-y-4 pb-12"
+          className="relative z-[700] rounded-t-3xl border-t border-border bg-card px-4 py-5 space-y-4 pb-12 min-h-[55vh]"
           style={{ boxShadow: "0 -8px 32px rgba(0,0,0,0.08)" }}
         >
           <div className="mx-auto h-1 w-10 rounded-full bg-border -mt-2 mb-3" />
@@ -54,18 +73,18 @@ export function MapDashboard({
         </div>
       </div>
 
-      {/* Desktop (single screen) */}
+      {/* ---------- Desktop ---------- */}
       <div className="hidden md:block relative h-full isolate">
         <div className="absolute inset-0 z-0">{map}</div>
         {overlay && <div className="absolute top-5 left-5 z-[500] w-[340px]">{overlay}</div>}
-        {mapLegend && (
-          <div className="absolute right-5 z-[500]" style={{ top: "calc(50% - 19vh)", transform: "translateY(-50%)" }}>
-            {mapLegend}
+        {mapControls && (
+          <div className="absolute z-[500] left-5" style={{ bottom: "calc(38vh + 24px)" }}>
+            {mapControls}
           </div>
         )}
-        {mapControls && (
-          <div className="absolute z-[500] left-5 bottom-[calc(38vh + 32px)]" style={{ bottom: "calc(38vh + 32px)" }}>
-            {mapControls}
+        {mapLegend && (
+          <div className="absolute right-5 z-[500]" style={{ bottom: "calc(38vh + 92px)" }}>
+            {mapLegend}
           </div>
         )}
         <div
@@ -83,6 +102,33 @@ export function MapDashboard({
         </div>
       </div>
     </>
+  );
+}
+
+function MobileCollapsible({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className="rounded-2xl border border-border overflow-hidden"
+      style={{
+        background: "color-mix(in oklab, white 94%, transparent)",
+        backdropFilter: "saturate(180%) blur(20px)",
+        WebkitBackdropFilter: "saturate(180%) blur(20px)",
+        boxShadow: "var(--shadow-float)",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-medium text-foreground"
+      >
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          Filter
+        </span>
+        <ChevronDown className={`size-4 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <div className="px-4 pb-4 pt-1 border-t border-border">{children}</div>}
+    </div>
   );
 }
 
@@ -105,7 +151,7 @@ export function PanelTabs<T extends string>({
     <div
       className="sticky top-0 z-[20] flex items-center justify-between gap-3 px-5 pt-4 pb-3"
       style={{
-        background: "color-mix(in oklab, white 94%, transparent)",
+        background: "color-mix(in oklab, white 96%, transparent)",
         backdropFilter: "saturate(180%) blur(14px)",
         WebkitBackdropFilter: "saturate(180%) blur(14px)",
         borderBottom: "1px solid var(--border)",
@@ -118,6 +164,7 @@ export function PanelTabs<T extends string>({
             <button
               key={o.v}
               onClick={() => onChange(o.v)}
+              type="button"
               className={`text-xs px-3 py-1.5 rounded-full transition-all whitespace-nowrap ${
                 active
                   ? "bg-foreground text-background font-medium"
@@ -134,14 +181,10 @@ export function PanelTabs<T extends string>({
   );
 }
 
-/**
- * Wrap the panel body so it has padding while tabs stay flush at the top.
- */
 export function PanelBody({ children }: { children: ReactNode }) {
   return <div className="px-5 py-4">{children}</div>;
 }
 
-/** Glass card for floating overlays on top of the map. */
 export function FloatingCard({
   children,
   className = "",
@@ -153,7 +196,7 @@ export function FloatingCard({
     <div
       className={`rounded-2xl border border-border p-3 ${className}`}
       style={{
-        background: "color-mix(in oklab, white 88%, transparent)",
+        background: "color-mix(in oklab, white 92%, transparent)",
         backdropFilter: "saturate(180%) blur(20px)",
         WebkitBackdropFilter: "saturate(180%) blur(20px)",
         boxShadow: "var(--shadow-float)",
