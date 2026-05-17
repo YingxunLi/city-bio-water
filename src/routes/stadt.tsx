@@ -112,21 +112,8 @@ function StadtPage() {
               { v: "stats", label: "Statistik" },
               { v: "kategorien", label: "Score-Kategorien" },
               { v: "typen", label: de.stadt.sources },
-              { v: "verlauf", label: de.common.overTime },
+              ...(isMobile ? [] : [{ v: "verlauf" as Tab, label: de.common.overTime }]),
             ]}
-            right={
-              tab === "typen" ? (
-                <ViewToggle
-                  value={typView}
-                  onChange={setTypView}
-                  options={[
-                    { v: "anzahl", label: "Anzahl" },
-                    { v: "score", label: "Score" },
-                    { v: "tree", label: "Treemap" },
-                  ]}
-                />
-              ) : null
-            }
           />
           <PanelBody>
             {tab === "stats" && (
