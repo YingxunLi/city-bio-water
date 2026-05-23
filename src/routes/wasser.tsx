@@ -9,6 +9,18 @@ import { ViewToggle } from "@/components/ui-bits";
 import { TimeSeries, bucketByDay } from "@/components/time-series";
 import { MetricChart, type Point } from "@/components/metric-chart";
 import { FU_COLORS, fuColor } from "@/lib/mock-data";
+import { Download } from "lucide-react";
+
+function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
+  if (!rows.length) return;
+  const keys = Object.keys(rows[0]);
+  const lines = [keys.join(","), ...rows.map(r => keys.map(k => JSON.stringify(r[k] ?? "")).join(","))];
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 
 export const Route = createFileRoute("/wasser")({
   head: () => ({
@@ -107,6 +119,20 @@ function WasserPage() {
               { v: "ph", label: de.wasser.ph },
               { v: "trans", label: de.wasser.transparenz },
             ]}
+            right={
+              <button
+                type="button"
+                title="Als CSV herunterladen"
+                onClick={() => downloadCsv(
+                  `wasser_${new Date().toISOString().slice(0,10)}.csv`,
+                  data.wasser.map(d => ({ id: d.id, lat: d.lat, lon: d.lon, fu: d.fu, ph: d.ph, transparenz: d.transparenz, device: d.device, date: d.date }))
+                )}
+                className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-xs"
+              >
+                <Download className="size-3.5 shrink-0" />
+                <span className="hidden sm:inline">Daten exportieren</span>
+              </button>
+            }
           />
           <PanelBody>
             {tab === "stats" && (
