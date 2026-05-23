@@ -110,7 +110,7 @@ function WasserPage() {
           />
           <PanelBody>
             {tab === "stats" && (
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_1.3fr] gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_1.3fr] gap-4 md:items-stretch">
                 <div className="grid grid-cols-2 gap-3 content-start">
                   <Stat label={de.common.observations} value={data.wasser.length} accent={WASSER} hint="Gesamtzahl" />
                   <div className="rounded-2xl border border-border bg-card p-3 relative overflow-hidden">
@@ -142,11 +142,13 @@ function WasserPage() {
                     {avgTrans ? <ScaleBar segments={TRANS_SEGMENTS} value={avgTrans} min={0} max={15} /> : null}
                   </div>
                 </div>
-                <div className="rounded-2xl border border-border bg-card p-3 min-h-[180px]">
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                <div className="rounded-2xl border border-border bg-card p-3 flex flex-col min-h-[180px] md:min-h-0">
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 shrink-0">
                     {de.common.observations} · {de.common.overTime}
                   </div>
-                  <TimeSeries data={ts} color={WASSER} height={160} />
+                  <div className="flex-1 min-h-[160px]">
+                    <TimeSeries data={ts} color={WASSER} height={undefined} />
+                  </div>
                 </div>
               </div>
             )}
@@ -204,38 +206,44 @@ function ScaleBar({ segments, value, min, max }: {
   min: number;
   max: number;
 }) {
-  const [tooltip, setTooltip] = React.useState<string | null>(null);
+  const [hovered, setHovered] = React.useState<ScaleSegment | null>(null);
   const pct = Math.max(0, Math.min(1, (value - min) / (max - min))) * 100;
   const active = segments.find(s => value >= s.min && value <= s.max) ?? segments[segments.length - 1];
+  const shown = hovered ?? null;
 
   return (
     <div className="mt-2.5 relative">
-      {tooltip && (
+      {shown && (
         <div className="absolute -top-1 left-0 right-0 -translate-y-full mb-1 z-10
           bg-card border border-border rounded-xl px-2.5 py-2 text-[10px] text-muted-foreground leading-relaxed shadow-[var(--shadow-float)] pointer-events-none">
-          <span className="font-medium text-foreground">{active.label.split(":")[0]}: </span>
-          {active.label.split(":").slice(1).join(":")}
+          <span className="font-medium text-foreground">{shown.label.split(":")[0]}: </span>
+          {shown.label.split(":").slice(1).join(":")}
         </div>
       )}
-      <div
-        className="relative h-2 rounded-full overflow-hidden flex cursor-default"
-        onMouseEnter={() => setTooltip(active.label)}
-        onMouseLeave={() => setTooltip(null)}
-      >
+      <div className="relative h-2 rounded-full overflow-hidden flex cursor-default">
         {segments.map((s, i) => (
           <div
             key={i}
-            className="h-full"
+            className="h-full transition-opacity"
             style={{
               width: `${((s.max - s.min) / (max - min)) * 100}%`,
               background: s.color,
+              opacity: hovered ? (hovered === s ? 1 : 0.45) : 1,
             }}
+            onMouseEnter={() => setHovered(s)}
+            onMouseLeave={() => setHovered(null)}
           />
         ))}
+      </div>
+      <div className="relative h-3">
         <div
-          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 size-3 rounded-full border-2 border-white shadow-sm pointer-events-none"
-          style={{ left: `${pct}%`, background: active.color }}
-        />
+          className="absolute -translate-x-1/2 pointer-events-none"
+          style={{ left: `${pct}%`, top: 1 }}
+        >
+          <svg width="14" height="8" viewBox="0 0 14 8">
+            <polygon points="7,0 0,8 14,8" fill={active.color} />
+          </svg>
+        </div>
       </div>
     </div>
   );
