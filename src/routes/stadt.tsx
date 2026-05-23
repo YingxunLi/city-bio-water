@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useFilters } from "@/lib/filter-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { de } from "@/lib/i18n";
@@ -120,28 +120,41 @@ function StadtPage() {
           />
           <PanelBody>
             {tab === "stats" && (
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_1.3fr] gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_1.3fr] gap-4 md:items-stretch">
                 <div className="grid grid-cols-2 gap-3 content-start">
                   <Stat label={de.common.observations} value={data.stadt.length} accent={STADT} hint="Gesamtzahl" />
-                  <Stat label={de.stadt.nest} value={avgNest || "—"} accent={STADT} hint={`Ø ${de.common.avg}`} swatch={avgNest ? nestColor(avgNest) : undefined} />
+                  <div className="rounded-2xl border border-border bg-card p-3 relative overflow-hidden">
+                    <div className="absolute -top-6 -right-6 size-20 rounded-full opacity-10" style={{ background: STADT }} />
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{de.stadt.nest}</div>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      {avgNest ? <span className="size-3 rounded-full border border-border" style={{ background: nestColor(avgNest) }} /> : null}
+                      <span className="text-xl md:text-2xl font-semibold stat-number">{avgNest || "—"}</span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{`Ø ${de.common.avg}`}</div>
+                    {avgNest ? <ScaleBar segments={NEST_SEGMENTS} value={avgNest} min={0} max={100} /> : null}
+                  </div>
                   <Stat
                     label="Beste Fläche"
                     value={data.stadt.length ? Math.max(...data.stadt.map((d) => d.nest)) : "—"}
                     accent={STADT}
                     hint="Maximum"
+                    className="min-h-[88px]"
                   />
                   <Stat
                     label="Flächentypen"
                     value={new Set(data.stadt.map((d) => d.type)).size}
                     accent={STADT}
                     hint="Anzahl"
+                    className="min-h-[88px]"
                   />
                 </div>
-                <div className="rounded-2xl border border-border bg-card p-3 min-h-[180px]">
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                <div className="rounded-2xl border border-border bg-card p-3 flex flex-col min-h-[180px] md:min-h-0">
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 shrink-0">
                     {de.common.observations} · {de.common.overTime}
                   </div>
-                  <TimeSeries data={ts} color={STADT} height={160} />
+                  <div className="flex-1 min-h-[160px]">
+                    <TimeSeries data={ts} color={STADT} height={undefined} />
+                  </div>
                 </div>
               </div>
             )}
@@ -233,10 +246,10 @@ function StadtPage() {
 }
 
 function Stat({
-  label, value, accent, hint, swatch,
-}: { label: string; value: React.ReactNode; accent: string; hint?: string; swatch?: string }) {
+  label, value, accent, hint, swatch, className,
+}: { label: string; value: React.ReactNode; accent: string; hint?: string; swatch?: string; className?: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-3 relative overflow-hidden">
+    <div className={`rounded-2xl border border-border bg-card p-3 relative overflow-hidden ${className ?? ""}`}>
       <div className="absolute -top-6 -right-6 size-20 rounded-full opacity-10" style={{ background: accent }} />
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{label}</div>
       <div className="mt-1 flex items-center gap-1.5">
@@ -247,6 +260,64 @@ function Stat({
     </div>
   );
 }
+
+type ScaleSegment = { min: number; max: number; color: string; label: string };
+
+function ScaleBar({ segments, value, min, max }: {
+  segments: ScaleSegment[];
+  value: number;
+  min: number;
+  max: number;
+}) {
+  const [hovered, setHovered] = React.useState<ScaleSegment | null>(null);
+  const pct = Math.max(0, Math.min(1, (value - min) / (max - min))) * 100;
+  const active = segments.find(s => value >= s.min && value <= s.max) ?? segments[segments.length - 1];
+
+  return (
+    <div className="mt-2.5 relative">
+      {hovered && (
+        <div className="absolute -top-1 left-0 right-0 -translate-y-full mb-1 z-10
+          bg-card border border-border rounded-xl px-2.5 py-2 text-[10px] text-muted-foreground leading-relaxed shadow-[var(--shadow-float)] pointer-events-none">
+          <span className="font-medium text-foreground">{hovered.label.split(":")[0]}: </span>
+          {hovered.label.split(":").slice(1).join(":")}
+        </div>
+      )}
+      <div className="relative h-2 rounded-full overflow-hidden flex cursor-default">
+        {segments.map((s, i) => (
+          <div
+            key={i}
+            className="h-full transition-opacity"
+            style={{
+              width: `${((s.max - s.min) / (max - min)) * 100}%`,
+              background: s.color,
+              opacity: hovered ? (hovered === s ? 1 : 0.45) : 1,
+            }}
+            onMouseEnter={() => setHovered(s)}
+            onMouseLeave={() => setHovered(null)}
+          />
+        ))}
+      </div>
+      <div className="relative h-3">
+        <div
+          className="absolute -translate-x-1/2 pointer-events-none"
+          style={{ left: `${pct}%`, top: 1 }}
+        >
+          <svg width="14" height="8" viewBox="0 0 14 8">
+            <polygon points="7,0 0,8 14,8" fill={active.color} />
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const NEST_SEGMENTS: ScaleSegment[] = [
+  { min: 0,   max: 20,  color: "#0b1a3a", label: "NEST 0–20: Sehr geringer ökologischer Wert. Kaum Grünstrukturen, stark versiegelt oder degradiert." },
+  { min: 20,  max: 40,  color: "#1e62a8", label: "NEST 20–40: Geringer Wert. Eingeschränkte Ökosystemleistungen, wenig Biodiversität und Aufenthaltsqualität." },
+  { min: 40,  max: 60,  color: "#6dc7d6", label: "NEST 40–60: Mittlerer Wert. Grundlegende Grünfunktionen vorhanden, Verbesserungspotenzial." },
+  { min: 60,  max: 80,  color: "#f4b65a", label: "NEST 60–80: Guter Wert. Vielfältige Grünstrukturen, förderlich für Biodiversität und Stadtklima." },
+  { min: 80,  max: 100, color: "#5b0f0c", label: "NEST 80–100: Sehr hoher ökologischer Wert. Naturnahe Fläche mit hoher Biodiversität und Ökosystemleistung." },
+];
 
 function NestLegendVertical() {
   return (
