@@ -274,27 +274,37 @@ const TRANS_SEGMENTS: ScaleSegment[] = [
 ];
 
 function FuLegendVertical() {
+  const [show, setShow] = React.useState(false);
   return (
-    <div
-      className="rounded-2xl border border-border p-2 flex items-stretch gap-1.5"
-      style={{
-        background: "color-mix(in oklab, white 92%, transparent)",
-        backdropFilter: "saturate(180%) blur(20px)",
-        boxShadow: "var(--shadow-float)",
-        height: 280,
-      }}
-      title="Forel-Ule-Skala (1 – 21)"
-    >
-      <div className="flex flex-col text-[9px] text-muted-foreground stat-number justify-between leading-none w-4 text-right">
-        {FU_COLORS.map((_, i) => (
-          <span key={i}>{i + 1}</span>
-        ))}
+    <div className="relative">
+      <div
+        className="rounded-2xl border border-border p-2 flex items-stretch gap-1.5 cursor-default"
+        style={{
+          background: "color-mix(in oklab, white 92%, transparent)",
+          backdropFilter: "saturate(180%) blur(20px)",
+          boxShadow: "var(--shadow-float)",
+          height: 280,
+        }}
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+      >
+        <div className="flex flex-col text-[9px] text-muted-foreground stat-number justify-between leading-none w-4 text-right">
+          {FU_COLORS.map((_, i) => (
+            <span key={i}>{i + 1}</span>
+          ))}
+        </div>
+        <div className="w-3 rounded-full overflow-hidden flex flex-col">
+          {FU_COLORS.map((c, i) => (
+            <div key={i} className="flex-1" style={{ background: c }} />
+          ))}
+        </div>
       </div>
-      <div className="w-3 rounded-full overflow-hidden flex flex-col">
-        {FU_COLORS.map((c, i) => (
-          <div key={i} className="flex-1" style={{ background: c }} title={`FU ${i + 1}`} />
-        ))}
-      </div>
+      {show && (
+        <div className="absolute top-0 right-full mr-2 z-20 w-56 bg-card border border-border rounded-xl px-3 py-2.5 text-[10px] text-muted-foreground leading-relaxed shadow-[var(--shadow-float)] pointer-events-none">
+          <div className="font-medium text-foreground text-[11px] mb-1">Forel-Ule-Skala (1–21)</div>
+          Die Forel-Ule-Skala beschreibt die Wasserfarbe von tiefblau (1) bis dunkelbraun (21). Sie spiegelt den Gehalt an Algen, Nährstoffen und gelösten Stoffen wider und ist ein einfacher Indikator für die optische Wasserqualität.
+        </div>
+      )}
     </div>
   );
 }

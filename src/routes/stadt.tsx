@@ -320,26 +320,36 @@ const NEST_SEGMENTS: ScaleSegment[] = [
 ];
 
 function NestLegendVertical() {
+  const [show, setShow] = React.useState(false);
   return (
-    <div
-      className="rounded-2xl border border-border p-1 flex items-stretch gap-1"
-      style={{
-        background: "color-mix(in oklab, white 92%, transparent)",
-        backdropFilter: "saturate(180%) blur(20px)",
-        boxShadow: "var(--shadow-float)",
-        height: 280,
-      }}
-      title="NEST Score 0–100"
-    >
-      <div className="flex flex-col text-[9px] text-muted-foreground stat-number justify-between leading-none w-5 text-right">
-        {[100, 80, 60, 40, 20, 0].map((n) => <span key={n}>{n}</span>)}
+    <div className="relative">
+      <div
+        className="rounded-2xl border border-border p-1 flex items-stretch gap-1 cursor-default"
+        style={{
+          background: "color-mix(in oklab, white 92%, transparent)",
+          backdropFilter: "saturate(180%) blur(20px)",
+          boxShadow: "var(--shadow-float)",
+          height: 280,
+        }}
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+      >
+        <div className="flex flex-col text-[9px] text-muted-foreground stat-number justify-between leading-none w-5 text-right">
+          {[100, 80, 60, 40, 20, 0].map((n) => <span key={n}>{n}</span>)}
+        </div>
+        <div className="w-3 rounded-full overflow-hidden flex flex-col">
+          {Array.from({ length: 32 }, (_, i) => {
+            const v = ((31 - i) / 31) * 100;
+            return <div key={i} className="flex-1" style={{ background: nestColor(v) }} />;
+          })}
+        </div>
       </div>
-      <div className="w-3 rounded-full overflow-hidden flex flex-col">
-        {Array.from({ length: 32 }, (_, i) => {
-          const v = ((31 - i) / 31) * 100;
-          return <div key={i} className="flex-1" style={{ background: nestColor(v) }} />;
-        })}
-      </div>
+      {show && (
+        <div className="absolute top-0 right-full mr-2 z-20 w-60 bg-card border border-border rounded-xl px-3 py-2.5 text-[10px] text-muted-foreground leading-relaxed shadow-[var(--shadow-float)] pointer-events-none">
+          <div className="font-medium text-foreground text-[11px] mb-1">NEST Score (0–100)</div>
+          Der NEST Score (Natural Environment Scoring Tool) ist ein 47-Punkte-Bewertungssystem, das von Forschenden entwickelt wurde, um die Qualität lokaler Grün- und Naturflächen zu messen.
+        </div>
+      )}
     </div>
   );
 }
