@@ -156,13 +156,8 @@ function CategoryCard({
   ts: { label: string; count: number }[];
 }) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="rounded-2xl border border-border bg-card p-3 group relative overflow-hidden hover:shadow-[var(--shadow-float)] transition-shadow block"
-    >
-      <div className="absolute -top-8 -right-8 size-28 rounded-full opacity-[0.08]" style={{ background: accent }} />
+    <div className="rounded-2xl border border-border bg-card p-3 group relative overflow-hidden transition-shadow">
+      <div className="absolute -top-8 -right-8 size-28 rounded-full opacity-[0.08] group-hover:opacity-[0.16] transition-opacity pointer-events-none" style={{ background: accent }} />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="size-7 rounded-lg flex items-center justify-center"
@@ -174,7 +169,14 @@ function CategoryCard({
             <div className="text-[10px] text-muted-foreground">{source}</div>
           </div>
         </div>
-        <ArrowUpRight className="size-4 text-muted-foreground group-hover:text-foreground transition" />
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`${label} öffnen`}
+        >
+          <ArrowUpRight className="size-4 text-muted-foreground" />
+        </a>
       </div>
       <div className="mt-2 flex items-end justify-between gap-3">
         <div>
@@ -194,6 +196,6 @@ function CategoryCard({
       <div className="-mx-1 mt-1">
         <TimeSeries data={ts} color={accent} height={48} />
       </div>
-    </a>
+    </div>
   );
 }
