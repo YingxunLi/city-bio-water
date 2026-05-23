@@ -82,7 +82,7 @@ function HomePage() {
             {tab === "quellen" && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <CategoryCard
-                  to="/wasser" accent="var(--wasser)"
+                  href="https://www.parkli.de/monitoring-apps" accent="var(--wasser)"
                   icon={<Droplets className="size-4" style={{ color: "var(--wasser)" }} />}
                   label={de.nav.wasser} source="EyeOnWater"
                   count={data.wasser.length}
@@ -92,7 +92,7 @@ function HomePage() {
                   ts={ts.wasser}
                 />
                 <CategoryCard
-                  to="/stadt" accent="var(--stadt)"
+                  href="https://www.parkli.de/stadt" accent="var(--stadt)"
                   icon={<TreePine className="size-4" style={{ color: "var(--stadt)" }} />}
                   label={de.nav.stadt} source="Greenspace Hack"
                   count={data.stadt.length}
@@ -102,7 +102,7 @@ function HomePage() {
                   ts={ts.stadt}
                 />
                 <CategoryCard
-                  to="/biodiversitaet" accent="var(--bio)"
+                  href="https://www.parkli.de/biodiversitaet" accent="var(--bio)"
                   icon={<Bird className="size-4" style={{ color: "var(--bio)" }} />}
                   label={de.nav.bio} source="iNaturalist"
                   count={data.bio.length}
@@ -149,16 +149,18 @@ function Legend({ dot, label }: { dot: string; label: string }) {
 }
 
 function CategoryCard({
-  to, accent, icon, label, source, count, metricLabel, metricValue, metricSwatch, ts,
+  href, accent, icon, label, source, count, metricLabel, metricValue, metricSwatch, ts,
 }: {
-  to: string; accent: string; icon: React.ReactNode; label: string; source: string;
+  href: string; accent: string; icon: React.ReactNode; label: string; source: string;
   count: number; metricLabel: string; metricValue: React.ReactNode; metricSwatch?: string;
   ts: { label: string; count: number }[];
 }) {
   return (
-    <Link
-      to={to}
-      className="rounded-2xl border border-border bg-card p-3 group relative overflow-hidden hover:shadow-[var(--shadow-float)] transition-shadow"
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="rounded-2xl border border-border bg-card p-3 group relative overflow-hidden hover:shadow-[var(--shadow-float)] transition-shadow block"
     >
       <div className="absolute -top-8 -right-8 size-28 rounded-full opacity-[0.08]" style={{ background: accent }} />
       <div className="flex items-center justify-between">
@@ -192,6 +194,6 @@ function CategoryCard({
       <div className="-mx-1 mt-1">
         <TimeSeries data={ts} color={accent} height={48} />
       </div>
-    </Link>
+    </a>
   );
 }
