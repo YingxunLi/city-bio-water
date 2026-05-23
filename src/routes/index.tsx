@@ -176,7 +176,7 @@ function CategoryCard({
       </div>
       <div className="mt-2 flex items-end justify-between gap-3">
         <div>
-          <div className="text-2xl font-semibold stat-number leading-none">{count.toLocaleString("de-DE")}</div>
+          <div className="text-base font-semibold stat-number leading-none">{count.toLocaleString("de-DE")}</div>
           <div className="text-[10px] text-muted-foreground mt-0.5">Beobachtungen</div>
         </div>
         <div className="text-right">
@@ -185,7 +185,7 @@ function CategoryCard({
             {metricSwatch && (
               <span className="size-2.5 rounded-full border border-border" style={{ background: metricSwatch }} />
             )}
-            <span className="text-base font-semibold stat-number">{metricValue}</span>
+            <span className="text-2xl font-semibold stat-number leading-none">{metricValue}</span>
           </div>
         </div>
       </div>
