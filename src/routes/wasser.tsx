@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useFilters } from "@/lib/filter-context";
 import { de } from "@/lib/i18n";
 import { FilterBar } from "@/components/filter-bar";
@@ -113,20 +113,34 @@ function WasserPage() {
               <div className="grid grid-cols-1 md:grid-cols-[1fr_1.3fr] gap-4">
                 <div className="grid grid-cols-2 gap-3 content-start">
                   <Stat label={de.common.observations} value={data.wasser.length} accent={WASSER} hint="Gesamtzahl" />
-                  <Stat
-                    label={de.wasser.fu}
-                    value={avgFu ? avgFu.toFixed(1) : "—"}
-                    accent={WASSER}
-                    hint={`Ø ${de.common.avg}`}
-                    swatch={avgFu ? fuColor(avgFu) : undefined}
-                  />
-                  <Stat label={de.wasser.ph} value={avgPh ? avgPh.toFixed(2) : "—"} accent={WASSER} hint={`Ø ${de.common.avg}`} />
-                  <Stat
-                    label={de.wasser.transparenz}
-                    value={avgTrans ? `${avgTrans.toFixed(1)} m` : "—"}
-                    accent={WASSER}
-                    hint={`Ø ${de.common.avg}`}
-                  />
+                  <div className="rounded-2xl border border-border bg-card p-3 relative overflow-hidden">
+                    <div className="absolute -top-6 -right-6 size-20 rounded-full opacity-10" style={{ background: WASSER }} />
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{de.wasser.fu}</div>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      {avgFu ? <span className="size-3 rounded-full border border-border" style={{ background: fuColor(avgFu) }} /> : null}
+                      <span className="text-xl md:text-2xl font-semibold stat-number">{avgFu ? avgFu.toFixed(1) : "—"}</span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{`Ø ${de.common.avg}`}</div>
+                    {avgFu ? <ScaleBar segments={FU_SEGMENTS} value={avgFu} min={1} max={21} /> : null}
+                  </div>
+                  <div className="rounded-2xl border border-border bg-card p-3 relative overflow-hidden">
+                    <div className="absolute -top-6 -right-6 size-20 rounded-full opacity-10" style={{ background: WASSER }} />
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{de.wasser.ph}</div>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <span className="text-xl md:text-2xl font-semibold stat-number">{avgPh ? avgPh.toFixed(2) : "—"}</span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{`Ø ${de.common.avg}`}</div>
+                    {avgPh ? <ScaleBar segments={PH_SEGMENTS} value={avgPh} min={0} max={14} /> : null}
+                  </div>
+                  <div className="rounded-2xl border border-border bg-card p-3 relative overflow-hidden">
+                    <div className="absolute -top-6 -right-6 size-20 rounded-full opacity-10" style={{ background: WASSER }} />
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{de.wasser.transparenz}</div>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <span className="text-xl md:text-2xl font-semibold stat-number">{avgTrans ? `${avgTrans.toFixed(1)} m` : "—"}</span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{`Ø ${de.common.avg}`}</div>
+                    {avgTrans ? <ScaleBar segments={TRANS_SEGMENTS} value={avgTrans} min={0} max={15} /> : null}
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-border bg-card p-3 min-h-[180px]">
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
@@ -181,6 +195,75 @@ function Stat({
     </div>
   );
 }
+
+type ScaleSegment = { min: number; max: number; color: string; label: string };
+
+function ScaleBar({ segments, value, min, max }: {
+  segments: ScaleSegment[];
+  value: number;
+  min: number;
+  max: number;
+}) {
+  const [tooltip, setTooltip] = React.useState<string | null>(null);
+  const pct = Math.max(0, Math.min(1, (value - min) / (max - min))) * 100;
+  const active = segments.find(s => value >= s.min && value <= s.max) ?? segments[segments.length - 1];
+
+  return (
+    <div className="mt-2.5 relative">
+      {tooltip && (
+        <div className="absolute -top-1 left-0 right-0 -translate-y-full mb-1 z-10
+          bg-card border border-border rounded-xl px-2.5 py-2 text-[10px] text-muted-foreground leading-relaxed shadow-[var(--shadow-float)] pointer-events-none">
+          <span className="font-medium text-foreground">{active.label.split(":")[0]}: </span>
+          {active.label.split(":").slice(1).join(":")}
+        </div>
+      )}
+      <div
+        className="relative h-2 rounded-full overflow-hidden flex cursor-default"
+        onMouseEnter={() => setTooltip(active.label)}
+        onMouseLeave={() => setTooltip(null)}
+      >
+        {segments.map((s, i) => (
+          <div
+            key={i}
+            className="h-full"
+            style={{
+              width: `${((s.max - s.min) / (max - min)) * 100}%`,
+              background: s.color,
+            }}
+          />
+        ))}
+        <div
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 size-3 rounded-full border-2 border-white shadow-sm pointer-events-none"
+          style={{ left: `${pct}%`, background: active.color }}
+        />
+      </div>
+    </div>
+  );
+}
+
+const PH_SEGMENTS: ScaleSegment[] = [
+  { min: 0,    max: 4,    color: "#c0392b", label: "pH < 4: Tödlich für alle einheimischen Fischarten." },
+  { min: 4,    max: 5.5,  color: "#e67e22", label: "pH 4–5,5: Kleinlebewesen werden größtenteils geschädigt oder getötet. Bei Fischen kann Säurekrankheit auftreten." },
+  { min: 5.5,  max: 6.5,  color: "#f1c40f", label: "pH 5,5–6,5: Übergangsbereich, leicht sauer." },
+  { min: 6.5,  max: 8.5,  color: "#2ecc71", label: "pH 6,5–8,5: Üblicher Bereich natürlicher Gewässer." },
+  { min: 8.5,  max: 10.8, color: "#e67e22", label: "pH 8,5–10,8: Bei Fischen kann Laugenkrankheit auftreten." },
+  { min: 10.8, max: 14,   color: "#c0392b", label: "pH > 10,8: Tödlich für alle einheimischen Fischarten." },
+];
+
+const FU_SEGMENTS: ScaleSegment[] = [
+  { min: 1,  max: 5,  color: "#2158bc", label: "FU 1–5: Geringe Nährstoffwerte und wenig Biomasseproduktion. Farbe durch Phytoplankton bestimmt." },
+  { min: 5,  max: 9,  color: "#568f96", label: "FU 6–9: Farbe durch Algen bestimmt, gelöste Stoffe und Sediment möglich. Typisch Richtung offene See." },
+  { min: 9,  max: 13, color: "#7dae38", label: "FU 10–13: Küstengewässer mit erhöhten Nährstoff- und Phytoplanktonwerten sowie Mineralien." },
+  { min: 13, max: 17, color: "#b89744", label: "FU 14–17: Hohe Nährstoff- und Phytoplanktonkonzentration, Sediment. Typisch für küstennahe Bereiche." },
+  { min: 17, max: 21, color: "#4d361a", label: "FU 18–21: Sehr hohe Huminsäurenkonzentration, typisch für Flüsse und Flussmündungen." },
+];
+
+const TRANS_SEGMENTS: ScaleSegment[] = [
+  { min: 0,  max: 2,  color: "#c0392b", label: "< 2 m (Niedrig): Starke Trübung, stark nährstoffreich (eutroph). Starke Algenblüte oder Schwebstoffe." },
+  { min: 2,  max: 5,  color: "#e67e22", label: "2–5 m (Mittel): Moderater Nährstoffgehalt (mesotroph). Typisch für mittlere Seen und Küstengewässer." },
+  { min: 5,  max: 10, color: "#2ecc71", label: "5–10 m (Hoch): Klarwassersystem (oligotroph). Nährstoffarm, wenig Algen, tiefe Photosynthesezonen." },
+  { min: 10, max: 15, color: "#1abc9c", label: "> 10 m (Sehr hoch): Extrem klares Wasser, wie in nährstoffarmen Gebirgsseen oder Ozeanen." },
+];
 
 function FuLegendVertical() {
   return (
