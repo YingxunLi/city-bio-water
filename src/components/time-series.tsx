@@ -49,7 +49,7 @@ export function TimeSeries({
   const id = useMemo(() => `g_${Math.random().toString(36).slice(2)}`, []);
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 6, right: 8, left: -16, bottom: 0 }}>
+      <AreaChart data={data} margin={{ top: 6, right: 8, left: 8, bottom: 0 }}>
         <defs>
           <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity={0.35} />
@@ -68,7 +68,7 @@ export function TimeSeries({
           tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
           axisLine={false}
           tickLine={false}
-          width={32}
+          width={38}
         />
         <Tooltip
           cursor={{ stroke: "var(--border)", strokeDasharray: "3 3" }}

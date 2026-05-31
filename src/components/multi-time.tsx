@@ -123,7 +123,7 @@ export function MultiTime({
       </div>
 
       <ResponsiveContainer width="100%" height={height}>
-        <ComposedChart margin={{ top: 6, right: 8, left: -16, bottom: 0 }}>
+        <ComposedChart margin={{ top: 6, right: 8, left: 8, bottom: 0 }}>
           <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" vertical={false} />
           <XAxis
             type="number"
@@ -142,7 +142,7 @@ export function MultiTime({
             tick={false}
             axisLine={false}
             tickLine={false}
-            width={32}
+            width={38}
           />
           <Tooltip
             cursor={{ stroke: "var(--border)", strokeDasharray: "3 3" }}

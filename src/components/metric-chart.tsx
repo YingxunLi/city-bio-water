@@ -138,7 +138,7 @@ export function MetricChart({
           />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart margin={{ top: 6, right: 12, left: -16, bottom: 0 }}>
+            <ComposedChart margin={{ top: 6, right: 12, left: 8, bottom: 0 }}>
               <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" vertical={false} />
               <XAxis
                 type="number"
@@ -157,7 +157,7 @@ export function MetricChart({
                 tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
                 axisLine={false}
                 tickLine={false}
-                width={32}
+                width={38}
               />
               <Tooltip
                 cursor={{ stroke: "var(--border)", strokeDasharray: "3 3" }}

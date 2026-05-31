@@ -1,14 +1,8 @@
 import { useFilters, type TimeRange } from "@/lib/filter-context";
 import { de } from "@/lib/i18n";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { MapPin, Clock, Radius } from "lucide-react";
+import { Clock, Radius } from "lucide-react";
+import { CityCombobox } from "@/components/city-combobox";
 
 const ranges: { v: TimeRange; label: string }[] = [
   { v: 7, label: de.filters.last7 },
@@ -19,7 +13,7 @@ const ranges: { v: TimeRange; label: string }[] = [
 ];
 
 export function FilterBar({ compact = false }: { compact?: boolean }) {
-  const { city, setCity, cities, radiusKm, setRadiusKm, range, setRange, isGesamt } = useFilters();
+  const { city, setCity, addCustomCity, cities, radiusKm, setRadiusKm, range, setRange, isGesamt } = useFilters();
 
   const containerCls = compact
     ? "flex flex-col gap-3"
@@ -27,29 +21,28 @@ export function FilterBar({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className={containerCls}>
+      {/* Stadt-Auswahl: Combobox mit Freitext-Eingabe */}
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <div className="size-9 rounded-full bg-muted flex items-center justify-center shrink-0">
-          <MapPin className="size-4 text-muted-foreground" />
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4 text-muted-foreground">
+            <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
             {de.filters.city}
           </div>
-          <Select value={city.id} onValueChange={setCity}>
-            <SelectTrigger className="border-0 shadow-none p-0 h-auto font-semibold text-base focus:ring-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {cities.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <CityCombobox
+            cities={cities}
+            value={city.id}
+            onSelect={setCity}
+            onCustom={addCustomCity}
+          />
         </div>
       </div>
 
+      {/* Radius-Slider */}
       <div className={`flex items-center gap-3 flex-1 min-w-0 ${isGesamt ? "opacity-40 pointer-events-none" : ""}`}>
         <div className="size-9 rounded-full bg-muted flex items-center justify-center shrink-0">
           <Radius className="size-4 text-muted-foreground" />
@@ -74,6 +67,7 @@ export function FilterBar({ compact = false }: { compact?: boolean }) {
         </div>
       </div>
 
+      {/* Zeitraum-Auswahl */}
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <div className="size-9 rounded-full bg-muted flex items-center justify-center shrink-0">
           <Clock className="size-4 text-muted-foreground" />
