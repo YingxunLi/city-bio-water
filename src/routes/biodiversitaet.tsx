@@ -8,6 +8,18 @@ import { MapDashboard, PanelTabs, PanelBody, FloatingCard } from "@/components/m
 import { ViewToggle } from "@/components/ui-bits";
 import { TimeSeries, bucketByDay } from "@/components/time-series";
 import { BIO_CATEGORIES } from "@/lib/mock-data";
+import { Download } from "lucide-react";
+
+function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
+  if (!rows.length) return;
+  const keys = Object.keys(rows[0]);
+  const lines = [keys.join(","), ...rows.map(r => keys.map(k => JSON.stringify(r[k] ?? "")).join(","))];
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 
 export const Route = createFileRoute("/biodiversitaet")({
   head: () => ({
@@ -25,17 +37,20 @@ const CAT_COLORS: Record<string, string> = {
   Plantae: "#00A36F",
   Aves: "#3FB7A0",
   Reptilia: "#A8C957",
+  Amphibia: "#6FBF73",
   Actinopterygii: "#1E7F8C",
   Insecta: "#F0A08C",
   Arachnida: "#7B4F3A",
+  Mollusca: "#8E7CC3",
   Fungi: "#C68B59",
   Mammalia: "#243285",
+  Animalia: "#9AA0A6",
 };
 
 type Tab = "stats" | "kategorien" | "arten";
 
 function BioPage() {
-  const { data, range } = useFilters();
+  const { data, range, bioStatus } = useFilters();
   const [mapMode, setMapMode] = useState<"points" | "heat">("points");
   const [tab, setTab] = useState<Tab>("stats");
 
@@ -47,10 +62,13 @@ function BioPage() {
     radius: p.threatened ? 7 : p.invasive ? 6 : 4,
     tooltip: `
       <div>
-        <div><b>${p.species}</b></div>
+        ${p.photo ? `<img src="${p.photo}" alt="" style="width:100%;max-width:140px;border-radius:6px;margin-bottom:4px" />` : ""}
+        <div><b><i>${p.species}</i></b></div>
+        ${p.commonName ? `<div>${p.commonName}</div>` : ""}
         <div>${p.category}${p.invasive ? " · invasiv" : ""}${p.threatened ? " · bedroht" : ""}</div>
+        ${p.place ? `<div>${p.place}</div>` : ""}
         <div>Ort: ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div>
-        <div>Zeit: ${new Date(p.date).toLocaleString('de-DE')}</div>
+        <div>Zeit: ${new Date(p.date).toLocaleDateString('de-DE')}</div>
       </div>
     `,
   }));
@@ -106,7 +124,34 @@ function BioPage() {
               { v: "kategorien", label: de.bio.categories },
               { v: "arten", label: "Häufigste Arten" },
             ]}
+            right={
+              <button
+                type="button"
+                title="Als CSV herunterladen"
+                disabled={!data.bio.length}
+                onClick={() => downloadCsv(
+                  `inaturalist_${new Date().toISOString().slice(0,10)}.csv`,
+                  data.bio.map(b => ({
+                    id: b.id, species: b.species, common_name: b.commonName ?? "",
+                    category: b.category, invasive: b.invasive, threatened: b.threatened,
+                    native: b.native ?? "", quality: b.quality ?? "",
+                    lat: b.lat, lon: b.lon, place: b.place ?? "", observed_on: b.date,
+                    observer: b.observer ?? "",
+                  }))
+                )}
+                className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-xs disabled:opacity-40 disabled:pointer-events-none"
+              >
+                <Download className="size-3.5 shrink-0" />
+                <span className="hidden sm:inline">Daten exportieren</span>
+              </button>
+            }
           />
+          {bioStatus.loading && (
+            <div className="px-3 py-1.5 text-[11px] text-muted-foreground">{de.common.loading}</div>
+          )}
+          {bioStatus.error && (
+            <div className="px-3 py-1.5 text-[11px] text-destructive">Fehler beim Laden der iNaturalist-Daten.</div>
+          )}
           <PanelBody>
             {tab === "stats" && (
               <div className="grid grid-cols-1 md:grid-cols-[1fr_1.3fr] gap-4">

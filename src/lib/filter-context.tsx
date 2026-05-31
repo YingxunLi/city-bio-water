@@ -1,8 +1,13 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { CITIES, type City, distanceKm, generateBio, generateStadt, generateWasser } from "./mock-data";
+import { useQuery } from "@tanstack/react-query";
+import { CITIES, type BioPoint, type City, distanceKm, generateStadt, generateWasser } from "./mock-data";
+import { fetchBioObservations } from "./inaturalist-api";
 import { realStadtTowns } from "./real-data";
 
 export type TimeRange = 7 | 30 | 90 | 365 | 9999;
+
+// "Gesamt" has no real center → use a wide radius covering the German bbox.
+const GESAMT_RADIUS_KM = 800;
 
 type Ctx = {
   city: City;
@@ -16,9 +21,10 @@ type Ctx = {
   data: {
     wasser: ReturnType<typeof generateWasser>;
     stadt: ReturnType<typeof generateStadt>;
-    bio: ReturnType<typeof generateBio>;
+    bio: BioPoint[];
   };
   totals: { wasser: number; stadt: number; bio: number };
+  bioStatus: { loading: boolean; error: boolean };
   lastUpdated: Date;
 };
 
@@ -47,12 +53,25 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     () => ({
       wasser: generateWasser(city),
       stadt: generateStadt(city),
-      bio: generateBio(city),
     }),
     [city],
   );
 
-  const data = useMemo(() => {
+  // Bio comes from the live iNaturalist API, already filtered server-side by
+  // the active center, radius and time range.
+  const effRadius = isGesamt ? GESAMT_RADIUS_KM : radiusKm;
+  const days = range === 9999 ? null : range;
+  const bioQuery = useQuery({
+    queryKey: ["bio", city.lat, city.lon, effRadius, days],
+    queryFn: () =>
+      fetchBioObservations({
+        data: { lat: city.lat, lon: city.lon, radiusKm: effRadius, days },
+      }),
+  });
+  const bio = bioQuery.data ?? [];
+
+  // Wasser & Stadt are synthetic/CSV → still filtered client-side here.
+  const filtered = useMemo(() => {
     const cutoff = Date.now() - range * 86400_000;
     const center: [number, number] = [city.lat, city.lon];
     const inside = <T extends { lat: number; lon: number; date: string }>(p: T) => {
@@ -63,15 +82,18 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     return {
       wasser: raw.wasser.filter(inside),
       stadt: raw.stadt.filter(inside),
-      bio: raw.bio.filter(inside),
     };
   }, [raw, city, radiusKm, range, isGesamt]);
+
+  const data = { ...filtered, bio };
 
   const totals = {
     wasser: raw.wasser.length,
     stadt: raw.stadt.length,
-    bio: raw.bio.length,
+    bio: bio.length,
   };
+
+  const bioStatus = { loading: bioQuery.isLoading, error: bioQuery.isError };
 
   return (
     <FilterCtx.Provider
@@ -86,6 +108,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
         isGesamt,
         data,
         totals,
+        bioStatus,
         lastUpdated,
       }}
     >

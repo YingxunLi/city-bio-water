@@ -1,6 +1,8 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { QueryClientProvider } from "@tanstack/react-query";
 import appCss from "../styles.css?url";
 import { FilterProvider } from "@/lib/filter-context";
+import { queryClient } from "@/lib/query";
 import { AppShell } from "@/components/app-shell";
 
 function NotFoundComponent() {
@@ -62,10 +64,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   return (
-    <FilterProvider>
-      <AppShell>
-        <Outlet />
-      </AppShell>
-    </FilterProvider>
+    <QueryClientProvider client={queryClient}>
+      <FilterProvider>
+        <AppShell>
+          <Outlet />
+        </AppShell>
+      </FilterProvider>
+    </QueryClientProvider>
   );
 }

@@ -90,11 +90,14 @@ export const BIO_CATEGORIES = [
   "Plantae",
   "Aves",
   "Reptilia",
+  "Amphibia",
   "Actinopterygii",
   "Insecta",
   "Arachnida",
+  "Mollusca",
   "Fungi",
   "Mammalia",
+  "Animalia",
 ] as const;
 export type BioCategory = (typeof BIO_CATEGORIES)[number];
 
@@ -107,9 +110,16 @@ export type BioPoint = {
   invasive: boolean;
   threatened: boolean;
   date: string;
+  // Optional enrichment from the iNaturalist API (absent for synthetic data).
+  commonName?: string;
+  place?: string;
+  photo?: string;
+  quality?: string;
+  native?: boolean;
+  observer?: string;
 };
 
-const SPECIES: Record<BioCategory, string[]> = {
+const SPECIES: Partial<Record<BioCategory, string[]>> = {
   Plantae: ["Bellis perennis", "Quercus robur", "Acer pseudoplatanus", "Taraxacum officinale"],
   Aves: ["Parus major", "Turdus merula", "Sitta europaea", "Erithacus rubecula"],
   Reptilia: ["Lacerta agilis", "Natrix natrix"],
