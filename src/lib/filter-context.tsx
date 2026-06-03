@@ -12,6 +12,7 @@ const GESAMT_RADIUS_KM = 800;
 type Ctx = {
   city: City;
   setCity: (id: string) => void;
+  addCustomCity: (c: City) => void;
   radiusKm: number;
   setRadiusKm: (n: number) => void;
   range: TimeRange;
@@ -45,8 +46,22 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const [radiusKm, setRadiusKm] = useState<number>(10);
   const [range, setRange] = useState<TimeRange>(90);
   const [lastUpdated] = useState(new Date());
+  const [extraCities, setExtraCities] = useState<City[]>([]);
 
-  const city = useMemo(() => ALL_CITIES.find((c) => c.id === cityId) ?? STUTTGART, [cityId]);
+  function addCustomCity(c: City) {
+    setExtraCities((prev) => {
+      if (prev.some((x) => x.id === c.id)) return prev;
+      return [...prev, c];
+    });
+    setCityId(c.id);
+  }
+
+  const allCities = useMemo(
+    () => [...ALL_CITIES, ...extraCities.filter((c) => !ALL_CITIES.some((x) => x.id === c.id))],
+    [extraCities],
+  );
+
+  const city = useMemo(() => allCities.find((c) => c.id === cityId) ?? STUTTGART, [allCities, cityId]);
   const isGesamt = city.id === "gesamt";
 
   const raw = useMemo(
@@ -100,11 +115,12 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       value={{
         city,
         setCity: setCityId,
+        addCustomCity,
         radiusKm,
         setRadiusKm,
         range,
         setRange,
-        cities: ALL_CITIES,
+        cities: allCities,
         isGesamt,
         data,
         totals,
