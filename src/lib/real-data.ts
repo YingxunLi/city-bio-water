@@ -234,3 +234,49 @@ function loadBio(): BioPoint[] {
 export function realBioPoints(): BioPoint[] {
   return loadBio();
 }
+
+// ---- Wasser: EyeOnWater CSV (+ API fallback) ----
+let _wasser: import("./mock-data").WasserPoint[] | null = null;
+
+import eowRaw from "@/data/eyeonwater.csv?raw";
+
+function loadWasser(): import("./mock-data").WasserPoint[] {
+  if (_wasser) return _wasser;
+  const lines = eowRaw.split(/\r?\n/);
+  const header = lines[0].split(",");
+  const iLat = header.indexOf("lat");
+  const iLon = header.indexOf("lng");
+  const iDate = header.indexOf("date_photo");
+  const iFu = header.indexOf("fu_value");
+  const iPh = header.indexOf("p_ph");
+  const iSd = header.indexOf("sd_depth");
+  const iDevice = header.indexOf("device_model");
+
+  const pts: import("./mock-data").WasserPoint[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const row = lines[i].split(",");
+    if (row.length < 4) continue;
+    const lat = parseFloat(row[iLat]);
+    const lon = parseFloat(row[iLon]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    const fu = Math.round(Math.abs(num(row[iFu])));
+    pts.push({
+      id: `eow_${i}`,
+      lat,
+      lon,
+      fu: fu >= 1 && fu <= 21 ? fu : 10,
+      ph: num(row[iPh]) || 7,
+      transparenz: num(row[iSd]) || 0,
+      device: (row[iDevice] || "").trim() || "EyeOnWater",
+      date: row[iDate]
+        ? new Date(row[iDate]).toISOString()
+        : new Date().toISOString(),
+    });
+  }
+  _wasser = pts;
+  return _wasser;
+}
+
+export function realWasserPoints(): import("./mock-data").WasserPoint[] {
+  return loadWasser();
+}
