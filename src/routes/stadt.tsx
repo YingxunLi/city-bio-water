@@ -10,7 +10,7 @@ import { TimeSeries, bucketByDay } from "@/components/time-series";
 import { BoxRow, computeBox } from "@/components/box-charts";
 import { type Point } from "@/components/metric-chart";
 import { Treemap } from "@/components/treemap";
-import { STADT_TYPES, nestColor, avgValid } from "@/lib/mock-data";
+import { STADT_TYPES, nestColor, avgValid, NEST_RAMP } from "@/lib/mock-data";
 import { downloadCsv } from "@/lib/csv";
 import { Download } from "lucide-react";
 
@@ -134,7 +134,7 @@ function StadtPage() {
                       <span className="text-xl md:text-2xl font-semibold stat-number">{avgNest != null ? avgNest : "—"}</span>
                     </div>
                     <div className="text-[10px] text-muted-foreground mt-0.5">{`Ø ${de.common.avg} · n=${ptsNest.length}`}</div>
-                    {avgNest != null ? <ScaleBar segments={NEST_SEGMENTS} value={avgNest} min={0} max={100} /> : null}
+                    {avgNest != null ? <GradientScaleBar value={avgNest} min={0} max={100} /> : null}
                   </div>
                   <Stat
                     label="Beste Fläche"
@@ -238,63 +238,27 @@ function Stat({
   );
 }
 
-type ScaleSegment = { min: number; max: number; color: string; label: string };
-
-function ScaleBar({ segments, value, min, max }: {
-  segments: ScaleSegment[];
-  value: number;
-  min: number;
-  max: number;
-}) {
-  const [hovered, setHovered] = React.useState<ScaleSegment | null>(null);
-  const pct = Math.max(0, Math.min(1, (value - min) / (max - min))) * 100;
-  const active = segments.find(s => value >= s.min && value <= s.max) ?? segments[segments.length - 1];
-
+// The NEST methodology paper (Gidlow et al.) reports means and group
+// comparisons but defines no official "low/medium/high" score bands — so
+// unlike a discrete, labeled scale, this is a plain continuous gradient
+// (same ramp as the map's nestColor/legend) with no invented categories.
+function GradientScaleBar({ value, min, max }: { value: number; min: number; max: number }) {
+  const span = Math.max(0.0001, max - min);
+  const pct = Math.max(0, Math.min(1, (value - min) / span)) * 100;
+  const gradient = NEST_RAMP.map((r) => `${r.c} ${r.t * 100}%`).join(", ");
   return (
     <div className="mt-2.5 relative">
-      {hovered && (
-        <div className="absolute -top-1 left-0 right-0 -translate-y-full mb-1 z-10
-          bg-card border border-border rounded-xl px-2.5 py-2 text-[10px] text-muted-foreground leading-relaxed shadow-[var(--shadow-float)] pointer-events-none">
-          <span className="font-medium text-foreground">{hovered.label.split(":")[0]}: </span>
-          {hovered.label.split(":").slice(1).join(":")}
-        </div>
-      )}
-      <div className="relative h-2 rounded-full overflow-hidden flex cursor-default">
-        {segments.map((s, i) => (
-          <div
-            key={i}
-            className="h-full transition-opacity"
-            style={{
-              width: `${((s.max - s.min) / (max - min)) * 100}%`,
-              background: s.color,
-              opacity: hovered ? (hovered === s ? 1 : 0.45) : 1,
-            }}
-            onMouseEnter={() => setHovered(s)}
-            onMouseLeave={() => setHovered(null)}
-          />
-        ))}
-      </div>
+      <div className="h-2 rounded-full" style={{ background: `linear-gradient(90deg, ${gradient})` }} />
       <div className="relative h-3">
-        <div
-          className="absolute -translate-x-1/2 pointer-events-none"
-          style={{ left: `${pct}%`, top: 1 }}
-        >
+        <div className="absolute -translate-x-1/2 pointer-events-none" style={{ left: `${pct}%`, top: 1 }}>
           <svg width="14" height="8" viewBox="0 0 14 8">
-            <polygon points="7,0 0,8 14,8" fill={active.color} />
+            <polygon points="7,0 0,8 14,8" fill="var(--foreground)" />
           </svg>
         </div>
       </div>
     </div>
   );
 }
-
-const NEST_SEGMENTS: ScaleSegment[] = [
-  { min: 0,   max: 20,  color: "#0b1a3a", label: "NEST 0–20: Sehr geringer ökologischer Wert. Kaum Grünstrukturen, stark versiegelt oder degradiert." },
-  { min: 20,  max: 40,  color: "#1e62a8", label: "NEST 20–40: Geringer Wert. Eingeschränkte Ökosystemleistungen, wenig Biodiversität und Aufenthaltsqualität." },
-  { min: 40,  max: 60,  color: "#6dc7d6", label: "NEST 40–60: Mittlerer Wert. Grundlegende Grünfunktionen vorhanden, Verbesserungspotenzial." },
-  { min: 60,  max: 80,  color: "#f4b65a", label: "NEST 60–80: Guter Wert. Vielfältige Grünstrukturen, förderlich für Biodiversität und Stadtklima." },
-  { min: 80,  max: 100, color: "#5b0f0c", label: "NEST 80–100: Sehr hoher ökologischer Wert. Naturnahe Fläche mit hoher Biodiversität und Ökosystemleistung." },
-];
 
 function NestLegendVertical() {
   const [show, setShow] = React.useState(false);

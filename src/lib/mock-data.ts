@@ -277,7 +277,7 @@ export function fuColor(fu: number | null) {
 
 // NEST score color ramp matching the official "Overall NEST score" legend
 // (dark navy low → cyan → off-white near 50 → orange → dark red high).
-const NEST_RAMP = [
+export const NEST_RAMP = [
   { t: 0, c: "#0b1a3a" },
   { t: 0.2, c: "#1e62a8" },
   { t: 0.4, c: "#6dc7d6" },
