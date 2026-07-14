@@ -128,6 +128,7 @@ function CitySection() {
           <CityCombobox
             cities={cities}
             value={city.id}
+            activeCity={city}
             onSelect={setCity}
             onCustom={addCustomCity}
           />

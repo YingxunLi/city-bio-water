@@ -19,6 +19,9 @@ import type { City } from "@/lib/mock-data";
 interface CityComboboxProps {
   cities: City[];
   value: string;
+  /** Currently active city, used only to render the trigger label when it's
+   * a custom/coordinate location that isn't part of `cities`. */
+  activeCity?: City;
   onSelect: (id: string) => void;
   onCustom?: (city: City) => void;
 }
@@ -54,14 +57,14 @@ function slugify(name: string) {
     .replace(/^-|-$/g, "");
 }
 
-export function CityCombobox({ cities, value, onSelect, onCustom }: CityComboboxProps) {
+export function CityCombobox({ cities, value, activeCity, onSelect, onCustom }: CityComboboxProps) {
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
   // Debounce-Timer für Nominatim-Vorschau (optional, hier nur beim Klick)
   const abortRef = useRef<AbortController | null>(null);
 
-  const current = cities.find((c) => c.id === value);
+  const current = cities.find((c) => c.id === value) ?? (activeCity?.id === value ? activeCity : undefined);
   const displayName = current?.name ?? value;
 
   const filtered = cities.filter((c) =>

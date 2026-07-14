@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { CITIES, type BioPoint, type City, type WasserPoint, distanceKm, generateStadt } from "./mock-data";
 import { fetchBioObservations } from "./inaturalist-api";
 import { fetchWasserObservations } from "./eyeonwater-api";
-import { realStadtTowns } from "./real-data";
 
 export type TimeRange = 7 | 30 | 90 | 365 | 9999;
 
@@ -36,11 +35,10 @@ const FilterCtx = createContext<Ctx | null>(null);
 // Synthetic "Gesamt" city centered on Europe (filter bypasses distance).
 const GESAMT_CITY: City = { id: "gesamt", name: "Gesamt", lat: 50.8, lon: 8.5 };
 
-const ALL_CITIES: City[] = [
-  GESAMT_CITY,
-  ...CITIES,
-  ...realStadtTowns().filter((t) => !CITIES.some((c) => c.id === t.id)),
-];
+// Dropdown/history only ever shows this standard, same-tier list of German
+// cities — Greenspace-Hack town names and user-entered custom locations are
+// deliberately excluded so the list doesn't grow or mix tiers.
+const ALL_CITIES: City[] = [GESAMT_CITY, ...CITIES];
 const STUTTGART = ALL_CITIES.find((c) => c.id === "stuttgart") ?? ALL_CITIES[1];
 
 export function FilterProvider({ children }: { children: ReactNode }) {
@@ -48,22 +46,25 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const [radiusKm, setRadiusKm] = useState<number>(10);
   const [range, setRange] = useState<TimeRange>(90);
   const [lastUpdated] = useState(new Date());
-  const [extraCities, setExtraCities] = useState<City[]>([]);
+  // Holds a free-text/coordinate location while it's active, purely so `city`
+  // can resolve it — never merged into the standard list, so it's never
+  // shown as a suggestion and disappears once another city is picked.
+  const [customCity, setCustomCity] = useState<City | null>(null);
+
+  function setCity(id: string) {
+    setCustomCity(null);
+    setCityId(id);
+  }
 
   function addCustomCity(c: City) {
-    setExtraCities((prev) => {
-      if (prev.some((x) => x.id === c.id)) return prev;
-      return [...prev, c];
-    });
+    setCustomCity(c);
     setCityId(c.id);
   }
 
-  const allCities = useMemo(
-    () => [...ALL_CITIES, ...extraCities.filter((c) => !ALL_CITIES.some((x) => x.id === c.id))],
-    [extraCities],
-  );
-
-  const city = useMemo(() => allCities.find((c) => c.id === cityId) ?? STUTTGART, [allCities, cityId]);
+  const city = useMemo(() => {
+    if (customCity && customCity.id === cityId) return customCity;
+    return ALL_CITIES.find((c) => c.id === cityId) ?? STUTTGART;
+  }, [cityId, customCity]);
   const isGesamt = city.id === "gesamt";
 
   const raw = useMemo(
@@ -125,13 +126,13 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     <FilterCtx.Provider
       value={{
         city,
-        setCity: setCityId,
+        setCity,
         addCustomCity,
         radiusKm,
         setRadiusKm,
         range,
         setRange,
-        cities: allCities,
+        cities: ALL_CITIES,
         isGesamt,
         data,
         totals,
