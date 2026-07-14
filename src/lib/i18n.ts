@@ -45,7 +45,7 @@ export const de = {
     subtitle: "Aus EyeOnWater gemeldete Gewässerproben",
     fu: "FU-Wert",
     ph: "pH",
-    transparenz: "Transparenz",
+    transparenz: "Sichttiefe",
     fuLegend: "Forel-Ule-Skala",
   },
   stadt: {

@@ -130,7 +130,7 @@ export type WasserPoint = {
   lon: number;
   fu: number | null; // 1-21 Forel-Ule scale; null = not reported
   ph: number | null;
-  transparenz: number | null; // m
+  transparenz: number | null; // Sichttiefe (sd_depth), cm
   device: string;
   date: string;
   /** Exact source record (API JSON or CSV row), unmodified — for data export. */

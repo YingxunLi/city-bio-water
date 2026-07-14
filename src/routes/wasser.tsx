@@ -32,6 +32,15 @@ function fmtFull(d: string) {
   return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`;
 }
 
+function quantile(sorted: number[], p: number) {
+  if (!sorted.length) return 0;
+  const idx = (sorted.length - 1) * p;
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+
 function fuTooltip(p: { fu: number | null; lat: number; lon: number; date: string; device: string }) {
   const c = fuColor(p.fu);
   return `
@@ -81,6 +90,12 @@ function WasserPage() {
     () => data.wasser.filter((d) => d.transparenz != null).map((d) => ({ ts: new Date(d.date).getTime(), v: d.transparenz as number, meta: { lat: d.lat, lon: d.lon } })),
     [data.wasser],
   );
+  // No agreed cm-scale clarity standard exists for this kind of small urban
+  // water body, so the scale bar's ends track the current selection's own
+  // 5th/95th percentile instead of an invented absolute threshold.
+  const transSorted = useMemo(() => ptsTr.map((p) => p.v).sort((a, b) => a - b), [ptsTr]);
+  const transMin = transSorted.length ? quantile(transSorted, 0.05) : 0;
+  const transMax = transSorted.length ? quantile(transSorted, 0.95) : 1;
 
   return (
     <MapDashboard
@@ -153,10 +168,10 @@ function WasserPage() {
                     <div className="absolute -top-6 -right-6 size-20 rounded-full opacity-10" style={{ background: WASSER }} />
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{de.wasser.transparenz}</div>
                     <div className="mt-1 flex items-center gap-1.5">
-                      <span className="text-xl md:text-2xl font-semibold stat-number">{avgTrans != null ? `${avgTrans.toFixed(1)} m` : "—"}</span>
+                      <span className="text-xl md:text-2xl font-semibold stat-number">{avgTrans != null ? `${avgTrans.toFixed(1)} cm` : "—"}</span>
                     </div>
                     <div className="text-[10px] text-muted-foreground mt-0.5">{`Ø ${de.common.avg} · n=${ptsTr.length}`}</div>
-                    {avgTrans != null ? <ScaleBar segments={TRANS_SEGMENTS} value={avgTrans} min={0} max={15} /> : null}
+                    {avgTrans != null ? <GradientScaleBar value={avgTrans} min={transMin} max={transMax} unit=" cm" /> : null}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-border bg-card p-3 flex flex-col min-h-[180px] md:min-h-0">
@@ -180,7 +195,7 @@ function WasserPage() {
             )}
             {tab === "trans" && (
               data.wasser.length === 0 ? <Empty /> :
-              <MetricChart values={ptsTr} color={WASSER} rangeDays={range} unit=" m" label={de.wasser.transparenz} domain={[0, 6]} height={210} />
+              <MetricChart values={ptsTr} color={WASSER} rangeDays={range} unit=" cm" label={de.wasser.transparenz} height={210} />
             )}
           </PanelBody>
         </>
@@ -283,12 +298,37 @@ const FU_SEGMENTS: ScaleSegment[] = [
   { min: 17, max: 21, color: "#4d361a", label: "FU 18–21: Sehr hohe Huminsäurenkonzentration, typisch für Flüsse und Flussmündungen." },
 ];
 
-const TRANS_SEGMENTS: ScaleSegment[] = [
-  { min: 0,  max: 2,  color: "#c0392b", label: "< 2 m (Niedrig): Starke Trübung, stark nährstoffreich (eutroph). Starke Algenblüte oder Schwebstoffe." },
-  { min: 2,  max: 5,  color: "#e67e22", label: "2–5 m (Mittel): Moderater Nährstoffgehalt (mesotroph). Typisch für mittlere Seen und Küstengewässer." },
-  { min: 5,  max: 10, color: "#2ecc71", label: "5–10 m (Hoch): Klarwassersystem (oligotroph). Nährstoffarm, wenig Algen, tiefe Photosynthesezonen." },
-  { min: 10, max: 15, color: "#1abc9c", label: "> 10 m (Sehr hoch): Extrem klares Wasser, wie in nährstoffarmen Gebirgsseen oder Ozeanen." },
-];
+// No universally agreed cm-scale clarity standard exists for small urban
+// water bodies, so Sichttiefe gets a continuous gradient (turbid → clear)
+// instead of invented discrete thresholds — see GradientScaleBar below.
+function GradientScaleBar({ value, min, max, unit = "" }: {
+  value: number;
+  min: number;
+  max: number;
+  unit?: string;
+}) {
+  const span = Math.max(0.0001, max - min);
+  const pct = Math.max(0, Math.min(1, (value - min) / span)) * 100;
+  return (
+    <div className="mt-2.5 relative">
+      <div
+        className="h-2 rounded-full"
+        style={{ background: `linear-gradient(90deg, ${FU_COLORS[20]}, ${FU_COLORS[0]})` }}
+      />
+      <div className="relative h-3">
+        <div className="absolute -translate-x-1/2 pointer-events-none" style={{ left: `${pct}%`, top: 1 }}>
+          <svg width="14" height="8" viewBox="0 0 14 8">
+            <polygon points="7,0 0,8 14,8" fill="var(--foreground)" />
+          </svg>
+        </div>
+      </div>
+      <div className="flex justify-between text-[9px] text-muted-foreground stat-number mt-0.5">
+        <span>{min.toFixed(0)}{unit}</span>
+        <span>{max.toFixed(0)}{unit}</span>
+      </div>
+    </div>
+  );
+}
 
 function FuLegendVertical() {
   const [show, setShow] = React.useState(false);
