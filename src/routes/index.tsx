@@ -6,7 +6,7 @@ import { FilterBar } from "@/components/filter-bar";
 import { GeoMap, type MapPoint } from "@/components/geo-map";
 import { MapDashboard, PanelTabs, PanelBody, FloatingCard } from "@/components/map-dashboard";
 import { TimeSeries, bucketByDay } from "@/components/time-series";
-import { fuColor, nestColor } from "@/lib/mock-data";
+import { fuColor, nestColor, avgValid } from "@/lib/mock-data";
 import { Droplets, TreePine, Bird, ArrowUpRight } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -31,11 +31,11 @@ function HomePage() {
   const allPoints: MapPoint[] = [
     ...data.wasser.map<MapPoint>((p) => ({
       id: p.id, lat: p.lat, lon: p.lon, color: "#243285", radius: 4,
-      tooltip: `<b>Wasser</b> · FU ${p.fu}`,
+      tooltip: `<b>Wasser</b> · FU ${p.fu ?? "k. A."}`,
     })),
     ...data.stadt.map<MapPoint>((p) => ({
       id: p.id, lat: p.lat, lon: p.lon, color: "#F0A08C", radius: 4,
-      tooltip: `<b>Stadt</b> · NEST ${p.nest}`,
+      tooltip: `<b>Stadt</b> · NEST ${p.nest ?? "k. A."}`,
     })),
     ...data.bio.map<MapPoint>((p) => ({
       id: p.id, lat: p.lat, lon: p.lon, color: "#00A36F", radius: 4,
@@ -49,12 +49,9 @@ function HomePage() {
     stadt: bucketByDay(data.stadt, range),
     bio: bucketByDay(data.bio, range),
   };
-  const avgFu = data.wasser.length
-    ? data.wasser.reduce((a, b) => a + b.fu, 0) / data.wasser.length
-    : 0;
-  const avgNest = data.stadt.length
-    ? Math.round(data.stadt.reduce((a, b) => a + b.nest, 0) / data.stadt.length)
-    : 0;
+  const avgFu = avgValid(data.wasser.map((d) => d.fu));
+  const avgNestRaw = avgValid(data.stadt.map((d) => d.nest));
+  const avgNest = avgNestRaw != null ? Math.round(avgNestRaw) : null;
   const uniqSpecies = new Set(data.bio.map((b) => b.species)).size;
 
   return (
@@ -87,8 +84,8 @@ function HomePage() {
                   label={de.nav.wasser} source="EyeOnWater"
                   count={data.wasser.length}
                   metricLabel={`${de.wasser.fu} · Ø`}
-                  metricValue={avgFu ? avgFu.toFixed(1) : "—"}
-                  metricSwatch={avgFu ? fuColor(avgFu) : undefined}
+                  metricValue={avgFu != null ? avgFu.toFixed(1) : "—"}
+                  metricSwatch={avgFu != null ? fuColor(avgFu) : undefined}
                   ts={ts.wasser}
                 />
                 <CategoryCard
@@ -97,8 +94,8 @@ function HomePage() {
                   label={de.nav.stadt} source="Greenspace Hack"
                   count={data.stadt.length}
                   metricLabel={`${de.stadt.nest} · Ø`}
-                  metricValue={avgNest || "—"}
-                  metricSwatch={avgNest ? nestColor(avgNest) : undefined}
+                  metricValue={avgNest != null ? avgNest : "—"}
+                  metricSwatch={avgNest != null ? nestColor(avgNest) : undefined}
                   ts={ts.stadt}
                 />
                 <CategoryCard
@@ -116,8 +113,8 @@ function HomePage() {
             {tab === "stats" && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <Stat label="Beobachtungen gesamt" value={total.toLocaleString("de-DE")} accent="var(--foreground)" hint="Summe" />
-                <Stat label="Ø FU-Wert" value={avgFu ? avgFu.toFixed(1) : "—"} accent="var(--wasser)" hint={`Durchschnitt · n=${data.wasser.length}`} />
-                <Stat label="Ø NEST" value={avgNest || "—"} accent="var(--stadt)" hint={`Durchschnitt · n=${data.stadt.length}`} />
+                <Stat label="Ø FU-Wert" value={avgFu != null ? avgFu.toFixed(1) : "—"} accent="var(--wasser)" hint={`Durchschnitt · n=${data.wasser.filter((d) => d.fu != null).length}`} />
+                <Stat label="Ø NEST" value={avgNest != null ? avgNest : "—"} accent="var(--stadt)" hint={`Durchschnitt · n=${data.stadt.filter((d) => d.nest != null).length}`} />
                 <Stat label="Verschiedene Arten" value={uniqSpecies} accent="var(--bio)" hint={`Unique · n=${data.bio.length}`} />
               </div>
             )}

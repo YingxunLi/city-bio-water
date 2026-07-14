@@ -8,19 +8,9 @@ import { MapDashboard, PanelTabs, PanelBody, FloatingCard } from "@/components/m
 import { ViewToggle } from "@/components/ui-bits";
 import { TimeSeries, bucketByDay } from "@/components/time-series";
 import { MetricChart, type Point } from "@/components/metric-chart";
-import { FU_COLORS, fuColor } from "@/lib/mock-data";
+import { FU_COLORS, fuColor, avgValid } from "@/lib/mock-data";
+import { downloadCsv } from "@/lib/csv";
 import { Download } from "lucide-react";
-
-function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
-  if (!rows.length) return;
-  const keys = Object.keys(rows[0]);
-  const lines = [keys.join(","), ...rows.map(r => keys.map(k => JSON.stringify(r[k] ?? "")).join(","))];
-  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
-}
 
 export const Route = createFileRoute("/wasser")({
   head: () => ({
@@ -42,13 +32,13 @@ function fmtFull(d: string) {
   return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`;
 }
 
-function fuTooltip(p: { fu: number; lat: number; lon: number; date: string; device: string }) {
+function fuTooltip(p: { fu: number | null; lat: number; lon: number; date: string; device: string }) {
   const c = fuColor(p.fu);
   return `
     <div style="display:flex;gap:10px;align-items:stretch;min-width:230px;padding:2px 0">
       <div style="width:6px;border-radius:3px;background:${c};flex:none"></div>
       <div style="display:flex;flex-direction:column;gap:3px;font-family:inherit">
-        <div style="font-size:13px;font-weight:600;letter-spacing:-0.01em">FU value verarbeitet: ${p.fu}</div>
+        <div style="font-size:13px;font-weight:600;letter-spacing:-0.01em">FU value verarbeitet: ${p.fu ?? "k. A."}</div>
         <div style="font-size:11px;color:#374151;display:flex;flex-direction:column;gap:1px">
           <span><span style="color:#6b7280">Ort:</span> lat=${p.lat.toFixed(5)} lon=${p.lon.toFixed(5)}</span>
           <span><span style="color:#6b7280">Datum:</span> ${fmtFull(p.date)}</span>
@@ -73,21 +63,22 @@ function WasserPage() {
   }));
 
   const ts = bucketByDay(data.wasser, range);
-  const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
-  const avgFu = avg(data.wasser.map((d) => d.fu));
-  const avgPh = avg(data.wasser.map((d) => d.ph));
-  const avgTrans = avg(data.wasser.map((d) => d.transparenz));
+  const avgFu = avgValid(data.wasser.map((d) => d.fu));
+  const avgPh = avgValid(data.wasser.map((d) => d.ph));
+  const avgTrans = avgValid(data.wasser.map((d) => d.transparenz));
 
+  // Samples with a missing value for this specific metric are dropped here —
+  // a null field must not show up as a point/average of 0.
   const ptsFu: Point[] = useMemo(
-    () => data.wasser.map((d) => ({ ts: new Date(d.date).getTime(), v: d.fu, meta: { lat: d.lat, lon: d.lon } })),
+    () => data.wasser.filter((d) => d.fu != null).map((d) => ({ ts: new Date(d.date).getTime(), v: d.fu as number, meta: { lat: d.lat, lon: d.lon } })),
     [data.wasser],
   );
   const ptsPh: Point[] = useMemo(
-    () => data.wasser.map((d) => ({ ts: new Date(d.date).getTime(), v: d.ph, meta: { lat: d.lat, lon: d.lon } })),
+    () => data.wasser.filter((d) => d.ph != null).map((d) => ({ ts: new Date(d.date).getTime(), v: d.ph as number, meta: { lat: d.lat, lon: d.lon } })),
     [data.wasser],
   );
   const ptsTr: Point[] = useMemo(
-    () => data.wasser.map((d) => ({ ts: new Date(d.date).getTime(), v: d.transparenz, meta: { lat: d.lat, lon: d.lon } })),
+    () => data.wasser.filter((d) => d.transparenz != null).map((d) => ({ ts: new Date(d.date).getTime(), v: d.transparenz as number, meta: { lat: d.lat, lon: d.lon } })),
     [data.wasser],
   );
 
@@ -125,7 +116,7 @@ function WasserPage() {
                 title="Als CSV herunterladen"
                 onClick={() => downloadCsv(
                   `wasser_${new Date().toISOString().slice(0,10)}.csv`,
-                  data.wasser.map(d => ({ id: d.id, lat: d.lat, lon: d.lon, fu: d.fu, ph: d.ph, transparenz: d.transparenz, device: d.device, date: d.date }))
+                  data.wasser.map(d => d.raw)
                 )}
                 className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-xs"
               >
@@ -143,29 +134,29 @@ function WasserPage() {
                     <div className="absolute -top-6 -right-6 size-20 rounded-full opacity-10" style={{ background: WASSER }} />
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{de.wasser.fu}</div>
                     <div className="mt-1 flex items-center gap-1.5">
-                      {avgFu ? <span className="size-3 rounded-full border border-border" style={{ background: fuColor(avgFu) }} /> : null}
-                      <span className="text-xl md:text-2xl font-semibold stat-number">{avgFu ? avgFu.toFixed(1) : "—"}</span>
+                      {avgFu != null ? <span className="size-3 rounded-full border border-border" style={{ background: fuColor(avgFu) }} /> : null}
+                      <span className="text-xl md:text-2xl font-semibold stat-number">{avgFu != null ? avgFu.toFixed(1) : "—"}</span>
                     </div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">{`Ø ${de.common.avg}`}</div>
-                    {avgFu ? <ScaleBar segments={FU_SEGMENTS} value={avgFu} min={1} max={21} /> : null}
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{`Ø ${de.common.avg} · n=${ptsFu.length}`}</div>
+                    {avgFu != null ? <ScaleBar segments={FU_SEGMENTS} value={avgFu} min={1} max={21} /> : null}
                   </div>
                   <div className="rounded-2xl border border-border bg-card p-3 relative overflow-hidden">
                     <div className="absolute -top-6 -right-6 size-20 rounded-full opacity-10" style={{ background: WASSER }} />
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{de.wasser.ph}</div>
                     <div className="mt-1 flex items-center gap-1.5">
-                      <span className="text-xl md:text-2xl font-semibold stat-number">{avgPh ? avgPh.toFixed(2) : "—"}</span>
+                      <span className="text-xl md:text-2xl font-semibold stat-number">{avgPh != null ? avgPh.toFixed(2) : "—"}</span>
                     </div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">{`Ø ${de.common.avg}`}</div>
-                    {avgPh ? <ScaleBar segments={PH_SEGMENTS} value={avgPh} min={0} max={14} /> : null}
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{`Ø ${de.common.avg} · n=${ptsPh.length}`}</div>
+                    {avgPh != null ? <ScaleBar segments={PH_SEGMENTS} value={avgPh} min={0} max={14} /> : null}
                   </div>
                   <div className="rounded-2xl border border-border bg-card p-3 relative overflow-hidden">
                     <div className="absolute -top-6 -right-6 size-20 rounded-full opacity-10" style={{ background: WASSER }} />
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{de.wasser.transparenz}</div>
                     <div className="mt-1 flex items-center gap-1.5">
-                      <span className="text-xl md:text-2xl font-semibold stat-number">{avgTrans ? `${avgTrans.toFixed(1)} m` : "—"}</span>
+                      <span className="text-xl md:text-2xl font-semibold stat-number">{avgTrans != null ? `${avgTrans.toFixed(1)} m` : "—"}</span>
                     </div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">{`Ø ${de.common.avg}`}</div>
-                    {avgTrans ? <ScaleBar segments={TRANS_SEGMENTS} value={avgTrans} min={0} max={15} /> : null}
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{`Ø ${de.common.avg} · n=${ptsTr.length}`}</div>
+                    {avgTrans != null ? <ScaleBar segments={TRANS_SEGMENTS} value={avgTrans} min={0} max={15} /> : null}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-border bg-card p-3 flex flex-col min-h-[180px] md:min-h-0">

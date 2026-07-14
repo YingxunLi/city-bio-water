@@ -119,31 +119,40 @@ function jitter(rand: () => number, lat: number, lon: number, radiusKm: number) 
   return [lat + dLat, lon + dLon] as [number, number];
 }
 
+// JSON-safe shape for a raw source record (API response or CSV row) —
+// deliberately narrower than `unknown` so TanStack Start can serialize it
+// across the server-fn boundary.
+export type RawRecord = Record<string, string | number | boolean | null>;
+
 export type WasserPoint = {
   id: string;
   lat: number;
   lon: number;
-  fu: number; // 1-21 Forel-Ule scale
-  ph: number;
-  transparenz: number; // m
+  fu: number | null; // 1-21 Forel-Ule scale; null = not reported
+  ph: number | null;
+  transparenz: number | null; // m
   device: string;
   date: string;
+  /** Exact source record (API JSON or CSV row), unmodified — for data export. */
+  raw: RawRecord;
 };
 
 export type StadtPoint = {
   id: string;
   lat: number;
   lon: number;
-  nest: number; // 0-100
-  shade: number;
-  drinking: number;
-  fountains: number;
-  biodiversity: number;
-  greenCare: number;
+  nest: number | null; // 0-100; null = not reported
+  shade: number | null;
+  drinking: number | null;
+  fountains: number | null;
+  biodiversity: number | null;
+  greenCare: number | null;
   type: StadtType;
   name?: string;
   gstypology?: string;
   date: string;
+  /** Exact source CSV row, unmodified — for data export. */
+  raw: RawRecord;
 };
 
 export const STADT_TYPES = [
@@ -192,6 +201,8 @@ export type BioPoint = {
   quality?: string;
   native?: boolean;
   observer?: string;
+  /** Exact source API record, unmodified — for data export. */
+  raw: RawRecord;
 };
 
 const SPECIES: Partial<Record<BioCategory, string[]>> = {
@@ -229,6 +240,7 @@ export function generateWasser(city: City, count = 220): WasserPoint[] {
       transparenz: +(0.2 + rand() * 6).toFixed(2),
       device: DEVICES[Math.floor(rand() * DEVICES.length)],
       date: dateInRange(rand, N_DAYS_POOL),
+      raw: {}, // synthetic mock data has no source record
     };
   });
 }
@@ -257,7 +269,9 @@ export const FU_COLORS = [
   "#94b660", "#a8b76d", "#b5b079", "#bba35d", "#c1a24b",
   "#b89744", "#a17a3a", "#946e34", "#84612d", "#6d4c25", "#4d361a",
 ];
-export function fuColor(fu: number) {
+const NO_DATA_COLOR = "#9ca3af";
+export function fuColor(fu: number | null) {
+  if (fu == null) return NO_DATA_COLOR;
   return FU_COLORS[Math.max(0, Math.min(20, Math.round(fu) - 1))];
 }
 
@@ -278,7 +292,8 @@ function mixHex(a: string, b: string, k: number) {
   const m = pa.map((v, i) => Math.round(v + (pb[i] - v) * k));
   return `rgb(${m[0]},${m[1]},${m[2]})`;
 }
-export function nestColor(score: number) {
+export function nestColor(score: number | null) {
+  if (score == null) return NO_DATA_COLOR;
   const t = Math.max(0, Math.min(1, score / 100));
   for (let i = 1; i < NEST_RAMP.length; i++) {
     if (t <= NEST_RAMP[i].t) {
@@ -289,6 +304,13 @@ export function nestColor(score: number) {
     }
   }
   return NEST_RAMP[NEST_RAMP.length - 1].c;
+}
+
+// Average over only the non-null samples — a missing measurement must not
+// count as 0 and skew the mean. Returns null if nothing is valid.
+export function avgValid(xs: (number | null | undefined)[]): number | null {
+  const valid = xs.filter((v): v is number => v != null && Number.isFinite(v));
+  return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
 }
 
 // distance helper (km)

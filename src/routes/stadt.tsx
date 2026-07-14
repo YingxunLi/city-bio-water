@@ -8,22 +8,12 @@ import { GeoMap, type MapPoint } from "@/components/geo-map";
 import { MapDashboard, PanelTabs, PanelBody, FloatingCard } from "@/components/map-dashboard";
 import { ViewToggle } from "@/components/ui-bits";
 import { TimeSeries, bucketByDay } from "@/components/time-series";
-import { BoxRow, RadarBox, computeBox } from "@/components/box-charts";
+import { BoxRow, computeBox } from "@/components/box-charts";
 import { MetricChart, type Point } from "@/components/metric-chart";
 import { Treemap } from "@/components/treemap";
-import { STADT_TYPES, nestColor } from "@/lib/mock-data";
+import { STADT_TYPES, nestColor, avgValid } from "@/lib/mock-data";
+import { downloadCsv } from "@/lib/csv";
 import { Download } from "lucide-react";
-
-function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
-  if (!rows.length) return;
-  const keys = Object.keys(rows[0]);
-  const lines = [keys.join(","), ...rows.map(r => keys.map(k => JSON.stringify(r[k] ?? "")).join(","))];
-  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
-}
 
 export const Route = createFileRoute("/stadt")({
   head: () => ({
@@ -37,7 +27,7 @@ export const Route = createFileRoute("/stadt")({
 
 const STADT = "#F0A08C";
 
-type Tab = "stats" | "kategorien" | "typen" | "verlauf";
+type Tab = "stats" | "typen" | "verlauf";
 type TypView = "anzahl" | "score" | "tree";
 
 function StadtPage() {
@@ -55,7 +45,7 @@ function StadtPage() {
     radius: 6,
     tooltip: `
       <div>
-        <div><b>NEST ${p.nest}</b></div>
+        <div><b>NEST ${p.nest ?? "k. A."}</b></div>
         ${p.name ? `<div>${p.name}</div>` : ""}
         <div>Ort: ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div>
         <div>gstypology: ${p.gstypology ?? p.type}</div>
@@ -64,40 +54,31 @@ function StadtPage() {
   }));
 
   const ts = bucketByDay(data.stadt, range);
-  const avgNest = data.stadt.length
-    ? Math.round(data.stadt.reduce((a, b) => a + b.nest, 0) / data.stadt.length)
-    : 0;
+  const avgNestRaw = avgValid(data.stadt.map((d) => d.nest));
+  const avgNest = avgNestRaw != null ? Math.round(avgNestRaw) : null;
 
-  const catMetrics = useMemo(() => {
-    if (data.stadt.length === 0) return [];
-    return [
-      { key: de.common.gesamt, values: data.stadt.map((d) => d.nest) },
-      { key: de.stadt.categories.shade, values: data.stadt.map((d) => d.shade) },
-      { key: de.stadt.categories.drinking, values: data.stadt.map((d) => d.drinking) },
-      { key: de.stadt.categories.fountains, values: data.stadt.map((d) => d.fountains) },
-      { key: de.stadt.categories.biodiversity, values: data.stadt.map((d) => d.biodiversity) },
-      { key: de.stadt.categories.green, values: data.stadt.map((d) => d.greenCare) },
-    ];
-  }, [data.stadt]);
+  // Missing scores for a category are dropped rather than counted as 0 —
+  // they'd otherwise drag the boxplot/median down for no ecological reason.
+  const notNull = (v: number | null): v is number => v != null;
 
   const byType = useMemo(() => {
     return STADT_TYPES
       .map((t) => {
         const subset = data.stadt.filter((p) => p.type === t);
-        const sorted = [...subset.map((s) => s.nest)].sort((a, b) => a - b);
+        const sorted = subset.map((s) => s.nest).filter(notNull).sort((a, b) => a - b);
         const med = sorted.length
           ? sorted.length % 2
             ? sorted[Math.floor(sorted.length / 2)]
             : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
           : 0;
-        return { type: t, count: subset.length, score: Math.round(med), values: subset.map((s) => s.nest) };
+        return { type: t, count: subset.length, score: Math.round(med), values: sorted };
       })
       .filter((b) => b.count > 0);
   }, [data.stadt]);
   const maxCount = Math.max(1, ...byType.map((b) => b.count));
 
   const ptsNest: Point[] = useMemo(
-    () => data.stadt.map((d) => ({ ts: new Date(d.date).getTime(), v: d.nest, meta: { lat: d.lat, lon: d.lon } })),
+    () => data.stadt.filter((d) => d.nest != null).map((d) => ({ ts: new Date(d.date).getTime(), v: d.nest as number, meta: { lat: d.lat, lon: d.lon } })),
     [data.stadt],
   );
 
@@ -125,7 +106,6 @@ function StadtPage() {
             onChange={setTab}
             options={[
               { v: "stats", label: "Statistik" },
-              { v: "kategorien", label: "Score-Kategorien" },
               { v: "typen", label: de.stadt.sources },
               ...(isMobile ? [] : [{ v: "verlauf" as Tab, label: de.common.overTime }]),
             ]}
@@ -135,7 +115,7 @@ function StadtPage() {
                 title="Als CSV herunterladen"
                 onClick={() => downloadCsv(
                   `stadt_${new Date().toISOString().slice(0,10)}.csv`,
-                  data.stadt.map(d => ({ id: d.id, lat: d.lat, lon: d.lon, nest: d.nest, shade: d.shade, drinking: d.drinking, fountains: d.fountains, biodiversity: d.biodiversity, greenCare: d.greenCare, type: d.type, name: d.name ?? "", date: d.date }))
+                  data.stadt.map(d => d.raw)
                 )}
                 className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-xs"
               >
@@ -153,15 +133,15 @@ function StadtPage() {
                     <div className="absolute -top-6 -right-6 size-20 rounded-full opacity-10" style={{ background: STADT }} />
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{de.stadt.nest}</div>
                     <div className="mt-1 flex items-center gap-1.5">
-                      {avgNest ? <span className="size-3 rounded-full border border-border" style={{ background: nestColor(avgNest) }} /> : null}
-                      <span className="text-xl md:text-2xl font-semibold stat-number">{avgNest || "—"}</span>
+                      {avgNest != null ? <span className="size-3 rounded-full border border-border" style={{ background: nestColor(avgNest) }} /> : null}
+                      <span className="text-xl md:text-2xl font-semibold stat-number">{avgNest != null ? avgNest : "—"}</span>
                     </div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">{`Ø ${de.common.avg}`}</div>
-                    {avgNest ? <ScaleBar segments={NEST_SEGMENTS} value={avgNest} min={0} max={100} /> : null}
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{`Ø ${de.common.avg} · n=${ptsNest.length}`}</div>
+                    {avgNest != null ? <ScaleBar segments={NEST_SEGMENTS} value={avgNest} min={0} max={100} /> : null}
                   </div>
                   <Stat
                     label="Beste Fläche"
-                    value={data.stadt.length ? Math.max(...data.stadt.map((d) => d.nest)) : "—"}
+                    value={ptsNest.length ? Math.max(...ptsNest.map((p) => p.v)) : "—"}
                     accent={STADT}
                     hint="Maximum"
                     className="min-h-[88px]"
@@ -183,27 +163,6 @@ function StadtPage() {
                   </div>
                 </div>
               </div>
-            )}
-
-            {tab === "kategorien" && (
-              catMetrics.length === 0 ? <Empty /> : (
-                <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-5 items-start">
-                  <div className="flex justify-center">
-                        <RadarBox
-                          stats={catMetrics.map((m) => computeBox(m.values, m.key))}
-                          domain={[0, 100]}
-                          color={STADT}
-                          size={isMobile ? 220 : 240}
-                          labelFontSize={isMobile ? 10 : 11}
-                        />
-                  </div>
-                  <div className="space-y-2 self-center">
-                    {catMetrics.map((m) => (
-                      <BoxRow key={m.key} stats={computeBox(m.values, m.key)} domain={[0, 100]} color={STADT} />
-                    ))}
-                  </div>
-                </div>
-              )
             )}
 
             {tab === "typen" && (

@@ -25,18 +25,21 @@ type EowObservation = {
 
 function toWasserPoint(o: EowObservation): WasserPoint | null {
   if (!Number.isFinite(o.latitude) || !Number.isFinite(o.longitude)) return null;
-  const fu = Math.round(Math.abs(o.fu_value ?? 0));
+  // A null field from the API means "not reported" — keep it null so it's
+  // excluded from averages instead of pulling them toward 0.
+  const fu = o.fu_value != null ? Math.round(Math.abs(o.fu_value)) : null;
   return {
     id: String(o.id),
     lat: o.latitude,
     lon: o.longitude,
-    fu: fu >= 1 && fu <= 21 ? fu : 10,
-    ph: o.p_ph ?? 7,
-    transparenz: o.sd_depth ?? 0,
+    fu: fu == null ? null : fu >= 1 && fu <= 21 ? fu : 10,
+    ph: o.p_ph,
+    transparenz: o.sd_depth,
     device: o.nickname ?? "EyeOnWater",
     date: o.date_photo
       ? new Date(o.date_photo).toISOString()
       : new Date().toISOString(),
+    raw: o,
   };
 }
 

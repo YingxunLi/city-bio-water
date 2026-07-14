@@ -8,6 +8,7 @@ import {
   STADT_TYPES,
   type BioCategory,
   type BioPoint,
+  type RawRecord,
   type StadtPoint,
   type StadtType,
 } from "./mock-data";
@@ -64,6 +65,25 @@ function num(v: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+// A blank/missing field means "not reported" and must stay null — treating
+// it as 0 would silently pull down averages of a real measurement scale.
+function numOrNull(v: string | undefined): number | null {
+  if (v === undefined || v.trim() === "") return null;
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : null;
+}
+function roundOrNull(v: number | null): number | null {
+  return v != null ? Math.round(v) : null;
+}
+
+// The exact source row, header-keyed, untouched — carried alongside the
+// parsed point so data export can reproduce it byte-for-byte.
+function rowToRaw(header: string[], row: string[]): RawRecord {
+  const out: RawRecord = {};
+  header.forEach((h, i) => { out[h] = row[i] ?? null; });
+  return out;
+}
+
 // ---- Stadt: Greenspace Hack ----
 let _stadt: StadtPoint[] | null = null;
 let _stadtTowns: { id: string; name: string; lat: number; lon: number }[] | null = null;
@@ -102,7 +122,7 @@ function loadStadt() {
     const safeType: StadtType = (STADT_TYPES as readonly string[]).includes(type)
       ? type
       : "Civic space";
-    const score = Math.round(num(row[iScore]));
+    const score = numOrNull(row[iScore]);
     // synthesize a date in the past year so time-range filter is meaningful
     const days = (i * 53) % 360;
     const date = new Date(Date.now() - days * 86400_000).toISOString();
@@ -110,16 +130,17 @@ function loadStadt() {
       id: `gs_${i}`,
       lat,
       lon,
-      nest: score,
-      shade: Math.round(num(row[iNN])),
-      drinking: Math.round(num(row[iAM])),
-      fountains: Math.round(num(row[iAC])),
-      biodiversity: Math.round(num(row[iNA])),
-      greenCare: Math.round(num(row[iUS])),
+      nest: score != null ? Math.round(score) : null,
+      shade: roundOrNull(numOrNull(row[iNN])),
+      drinking: roundOrNull(numOrNull(row[iAM])),
+      fountains: roundOrNull(numOrNull(row[iAC])),
+      biodiversity: roundOrNull(numOrNull(row[iNA])),
+      greenCare: roundOrNull(numOrNull(row[iUS])),
       type: safeType,
       name: (row[iName] || "").trim(),
       gstypology: rawType,
       date,
+      raw: rowToRaw(header, row),
     });
     const town = (row[iTown] || row[iName] || "").trim();
     if (town) {
@@ -225,6 +246,7 @@ function loadBio(): BioPoint[] {
       invasive: seed % 23 === 0,
       threatened: seed % 31 === 0,
       date: new Date(date).toISOString(),
+      raw: rowToRaw(header, row),
     });
   });
   _bio = out;
@@ -259,18 +281,22 @@ function loadWasser(): import("./mock-data").WasserPoint[] {
     const lat = parseFloat(row[iLat]);
     const lon = parseFloat(row[iLon]);
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-    const fu = Math.round(Math.abs(num(row[iFu])));
+    const fuRaw = numOrNull(row[iFu]);
+    const fu = fuRaw != null ? Math.round(Math.abs(fuRaw)) : null;
     pts.push({
       id: `eow_${i}`,
       lat,
       lon,
-      fu: fu >= 1 && fu <= 21 ? fu : 10,
-      ph: num(row[iPh]) || 7,
-      transparenz: num(row[iSd]) || 0,
+      // out-of-scale but present values are a data glitch, not "no data" → clamp;
+      // a genuinely missing field stays null so it's excluded from averages.
+      fu: fu == null ? null : fu >= 1 && fu <= 21 ? fu : 10,
+      ph: numOrNull(row[iPh]),
+      transparenz: numOrNull(row[iSd]),
       device: (row[iDevice] || "").trim() || "EyeOnWater",
       date: row[iDate]
         ? new Date(row[iDate]).toISOString()
         : new Date().toISOString(),
+      raw: rowToRaw(header, row),
     });
   }
   _wasser = pts;

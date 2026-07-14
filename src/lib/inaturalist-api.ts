@@ -74,6 +74,7 @@ function toBioPoint(o: SlimObservation): BioPoint | null {
     quality: o.quality_grade || undefined,
     native: o.taxon_native ?? undefined,
     observer: o.user_login || undefined,
+    raw: o,
   };
 }
 
