@@ -72,7 +72,6 @@ function WasserPage() {
   }));
 
   const ts = bucketByDay(data.wasser, range);
-  const avgFu = avgValid(data.wasser.map((d) => d.fu));
   const avgPh = avgValid(data.wasser.map((d) => d.ph));
   const avgTrans = avgValid(data.wasser.map((d) => d.transparenz));
 
@@ -82,6 +81,12 @@ function WasserPage() {
     () => data.wasser.filter((d) => d.fu != null).map((d) => ({ ts: new Date(d.date).getTime(), v: d.fu as number, meta: { lat: d.lat, lon: d.lon } })),
     [data.wasser],
   );
+  // FU is an ordinal color scale, not a continuous measurement — neither a
+  // mean nor a median claims a meaningful "typical value" for it, so we just
+  // show the observed min/max instead.
+  const fuSorted = useMemo(() => ptsFu.map((p) => p.v).sort((a, b) => a - b), [ptsFu]);
+  const minFu = fuSorted.length ? fuSorted[0] : null;
+  const maxFu = fuSorted.length ? fuSorted[fuSorted.length - 1] : null;
   const ptsPh: Point[] = useMemo(
     () => data.wasser.filter((d) => d.ph != null).map((d) => ({ ts: new Date(d.date).getTime(), v: d.ph as number, meta: { lat: d.lat, lon: d.lon } })),
     [data.wasser],
@@ -149,11 +154,14 @@ function WasserPage() {
                     <div className="absolute -top-6 -right-6 size-20 rounded-full opacity-10" style={{ background: WASSER }} />
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{de.wasser.fu}</div>
                     <div className="mt-1 flex items-center gap-1.5">
-                      {avgFu != null ? <span className="size-3 rounded-full border border-border" style={{ background: fuColor(avgFu) }} /> : null}
-                      <span className="text-xl md:text-2xl font-semibold stat-number">{avgFu != null ? avgFu.toFixed(1) : "—"}</span>
+                      <span className="text-xl md:text-2xl font-semibold stat-number">
+                        {minFu != null && maxFu != null ? `${minFu} ~ ${maxFu}` : "—"}
+                      </span>
                     </div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">{`Ø ${de.common.avg} · n=${ptsFu.length}`}</div>
-                    {avgFu != null ? <ScaleBar segments={FU_SEGMENTS} value={avgFu} min={1} max={21} /> : null}
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{`Min, Max · n=${ptsFu.length}`}</div>
+                    {minFu != null && maxFu != null ? (
+                      <ScaleBar segments={FU_SEGMENTS} min={1} max={21} pointers={[minFu, maxFu]} />
+                    ) : null}
                   </div>
                   <div className="rounded-2xl border border-border bg-card p-3 relative overflow-hidden">
                     <div className="absolute -top-6 -right-6 size-20 rounded-full opacity-10" style={{ background: WASSER }} />
@@ -162,7 +170,7 @@ function WasserPage() {
                       <span className="text-xl md:text-2xl font-semibold stat-number">{avgPh != null ? avgPh.toFixed(2) : "—"}</span>
                     </div>
                     <div className="text-[10px] text-muted-foreground mt-0.5">{`Ø ${de.common.avg} · n=${ptsPh.length}`}</div>
-                    {avgPh != null ? <ScaleBar segments={PH_SEGMENTS} value={avgPh} min={0} max={14} /> : null}
+                    {avgPh != null ? <ScaleBar segments={PH_SEGMENTS} min={0} max={14} pointers={[avgPh]} /> : null}
                   </div>
                   <div className="rounded-2xl border border-border bg-card p-3 relative overflow-hidden">
                     <div className="absolute -top-6 -right-6 size-20 rounded-full opacity-10" style={{ background: WASSER }} />
@@ -232,16 +240,18 @@ function Stat({
 
 type ScaleSegment = { min: number; max: number; color: string; label: string };
 
-function ScaleBar({ segments, value, min, max }: {
+function ScaleBar({ segments, pointers, min, max }: {
   segments: ScaleSegment[];
-  value: number;
+  /** One value → single pointer (e.g. the average). Two values → e.g. min/max. */
+  pointers: number[];
   min: number;
   max: number;
 }) {
   const [hovered, setHovered] = React.useState<ScaleSegment | null>(null);
-  const pct = Math.max(0, Math.min(1, (value - min) / (max - min))) * 100;
-  const active = segments.find(s => value >= s.min && value <= s.max) ?? segments[segments.length - 1];
+  const span = max - min;
   const shown = hovered ?? null;
+  const activeFor = (v: number) =>
+    segments.find((s) => v >= s.min && v <= s.max) ?? segments[segments.length - 1];
 
   return (
     <div className="mt-2.5 relative">
@@ -258,7 +268,7 @@ function ScaleBar({ segments, value, min, max }: {
             key={i}
             className="h-full transition-opacity"
             style={{
-              width: `${((s.max - s.min) / (max - min)) * 100}%`,
+              width: `${((s.max - s.min) / span) * 100}%`,
               background: s.color,
               opacity: hovered ? (hovered === s ? 1 : 0.45) : 1,
             }}
@@ -268,14 +278,20 @@ function ScaleBar({ segments, value, min, max }: {
         ))}
       </div>
       <div className="relative h-3">
-        <div
-          className="absolute -translate-x-1/2 pointer-events-none"
-          style={{ left: `${pct}%`, top: 1 }}
-        >
-          <svg width="14" height="8" viewBox="0 0 14 8">
-            <polygon points="7,0 0,8 14,8" fill={active.color} />
-          </svg>
-        </div>
+        {pointers.map((v, i) => {
+          const pct = Math.max(0, Math.min(1, (v - min) / span)) * 100;
+          return (
+            <div
+              key={i}
+              className="absolute -translate-x-1/2 pointer-events-none"
+              style={{ left: `${pct}%`, top: 1 }}
+            >
+              <svg width="14" height="8" viewBox="0 0 14 8">
+                <polygon points="7,0 0,8 14,8" fill={activeFor(v).color} />
+              </svg>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
