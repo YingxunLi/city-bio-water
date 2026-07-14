@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useMemo, useState } from "react";
 import { useFilters } from "@/lib/filter-context";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { de } from "@/lib/i18n";
 import { FilterBar } from "@/components/filter-bar";
 import { GeoMap, type MapPoint } from "@/components/geo-map";
@@ -9,7 +8,7 @@ import { MapDashboard, PanelTabs, PanelBody, FloatingCard } from "@/components/m
 import { ViewToggle } from "@/components/ui-bits";
 import { TimeSeries, bucketByDay } from "@/components/time-series";
 import { BoxRow, computeBox } from "@/components/box-charts";
-import { MetricChart, type Point } from "@/components/metric-chart";
+import { type Point } from "@/components/metric-chart";
 import { Treemap } from "@/components/treemap";
 import { STADT_TYPES, nestColor, avgValid } from "@/lib/mock-data";
 import { downloadCsv } from "@/lib/csv";
@@ -27,12 +26,11 @@ export const Route = createFileRoute("/stadt")({
 
 const STADT = "#F0A08C";
 
-type Tab = "stats" | "typen" | "verlauf";
+type Tab = "stats" | "typen";
 type TypView = "anzahl" | "score" | "tree";
 
 function StadtPage() {
   const { data, range } = useFilters();
-  const isMobile = useIsMobile();
   const [mapMode, setMapMode] = useState<"points" | "heat">("points");
   const [tab, setTab] = useState<Tab>("stats");
   const [typView, setTypView] = useState<TypView>("anzahl");
@@ -107,7 +105,6 @@ function StadtPage() {
             options={[
               { v: "stats", label: "Statistik" },
               { v: "typen", label: de.stadt.sources },
-              ...(isMobile ? [] : [{ v: "verlauf" as Tab, label: de.common.overTime }]),
             ]}
             right={
               <button
@@ -217,11 +214,6 @@ function StadtPage() {
                   )}
                 </div>
               )
-            )}
-
-            {tab === "verlauf" && !isMobile && (
-              data.stadt.length === 0 ? <Empty /> :
-              <MetricChart values={ptsNest} color={STADT} rangeDays={range} label={de.stadt.nest} domain={[0, 100]} height={220} />
             )}
           </PanelBody>
         </>

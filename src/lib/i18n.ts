@@ -35,7 +35,6 @@ export const de = {
     gesamt: "Gesamt",
     chartView: "Diagramm",
     radarView: "Radar",
-    boxplotView: "Boxplot",
     loading: "Lädt …",
     noData: "Keine Daten im gewählten Bereich.",
     overTime: "Im Zeitverlauf",
