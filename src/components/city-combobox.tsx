@@ -120,6 +120,21 @@ export function CityCombobox({ cities, value, activeCity, onSelect, onCustom }: 
     }
   }
 
+  // Dropdown-Auswahl vorerst deaktiviert (nur Anzeige des aktuellen Stadtnamens).
+  // Ursprüngliche Popover/Command-Implementierung unten auskommentiert,
+  // falls sie später wieder gebraucht wird.
+  return (
+    <span
+      className={cn(
+        "flex items-center gap-1.5 text-left w-full",
+        "font-semibold text-base leading-tight",
+      )}
+    >
+      <span className="flex-1 truncate">{displayName}</span>
+    </span>
+  );
+
+  /*
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -209,4 +224,5 @@ export function CityCombobox({ cities, value, activeCity, onSelect, onCustom }: 
       </PopoverContent>
     </Popover>
   );
+  */
 }
