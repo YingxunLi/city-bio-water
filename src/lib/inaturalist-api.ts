@@ -94,7 +94,7 @@ const PAGE_SIZE = 200;
 export const fetchBioObservations = createServerFn({ method: "GET" })
   .inputValidator((params: BioQueryParams) => params)
   .handler(async ({ data }): Promise<BioPoint[]> => {
-    const { lat, lon, radiusKm, days, max = 3000 } = data;
+    const { lat, lon, radiusKm, days, max = 30000 } = data;
     console.log("[bio] fetch params:", { lat, lon, radiusKm, days });
     const out: BioPoint[] = [];
 
