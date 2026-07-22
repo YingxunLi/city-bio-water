@@ -28,7 +28,7 @@ type SlimObservation = {
   taxon_introduced: boolean | null;
   taxon_endemic: boolean | null;
   taxon_threatened: boolean | null;
-  taxon_default_photo_square_url: string | null;
+  // taxon_default_photo_square_url: string | null;
   user_login: string | null;
 };
 
