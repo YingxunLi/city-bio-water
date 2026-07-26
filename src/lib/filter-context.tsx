@@ -1,8 +1,9 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CITIES, type BioPoint, type City, type WasserPoint, distanceKm, generateStadt } from "./mock-data";
+import { CITIES, type BioPoint, type City, type StadtPoint, type WasserPoint } from "./mock-data";
 import { fetchBioObservations } from "./inaturalist-api";
 import { fetchWasserObservations } from "./eyeonwater-api";
+import { fetchStadtObservations } from "./greenspace-api";
 
 export type TimeRange = 7 | 30 | 90 | 365 | 9999;
 
@@ -21,7 +22,7 @@ type Ctx = {
   isGesamt: boolean;
   data: {
     wasser: WasserPoint[];
-    stadt: ReturnType<typeof generateStadt>;
+    stadt: StadtPoint[];
     bio: BioPoint[];
   };
   totals: { wasser: number; stadt: number; bio: number };
@@ -43,7 +44,7 @@ const STUTTGART = ALL_CITIES.find((c) => c.id === "stuttgart") ?? ALL_CITIES[1];
 
 export function FilterProvider({ children }: { children: ReactNode }) {
   const [cityId, setCityId] = useState<string>(STUTTGART.id);
-  const [radiusKm, setRadiusKm] = useState<number>(10);
+  const [radiusKm, setRadiusKm] = useState<number>(2);
   const [range, setRange] = useState<TimeRange>(90);
   const [lastUpdated] = useState(new Date());
   // Holds a free-text/coordinate location while it's active, purely so `city`
@@ -67,15 +68,8 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   }, [cityId, customCity]);
   const isGesamt = city.id === "gesamt";
 
-  const raw = useMemo(
-    () => ({
-      stadt: generateStadt(city),
-    }),
-    [city],
-  );
-
-  // Bio comes from the live iNaturalist API, already filtered server-side by
-  // the active center, radius and time range.
+  // Bio, Wasser and Stadt all come from live Parkli-dashboard APIs now,
+  // already filtered server-side by the active center, radius and time range.
   const effRadius = isGesamt ? GESAMT_RADIUS_KM : radiusKm;
   const days = range === 9999 ? null : range;
   const bioQuery = useQuery({
@@ -95,32 +89,26 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       }),
   });
   const wasserRaw = wasserQuery.data ?? [];
-  console.log("[wasser] status:", wasserQuery.status, "data:", wasserQuery.data?.length, "error:", wasserQuery.error);
 
-  // Stadt is CSV → filtered client-side; Wasser is now server-filtered via API.
-  const filtered = useMemo(() => {
-    const cutoff = Date.now() - range * 86400_000;
-    const center: [number, number] = [city.lat, city.lon];
-    const inside = <T extends { lat: number; lon: number; date: string }>(p: T) => {
-      if (new Date(p.date).getTime() < cutoff) return false;
-      if (isGesamt) return true;
-      return distanceKm(center, [p.lat, p.lon]) <= radiusKm;
-    };
-    return {
-      wasser: wasserRaw,
-      stadt: raw.stadt.filter(inside),
-    };
-  }, [raw, wasserRaw, city, radiusKm, range, isGesamt]);
+  const stadtQuery = useQuery({
+    queryKey: ["stadt", city.lat, city.lon, effRadius, days],
+    queryFn: () =>
+      fetchStadtObservations({
+        data: { lat: city.lat, lon: city.lon, radiusKm: effRadius, days },
+      }),
+  });
+  const stadtRaw = stadtQuery.data ?? [];
 
-  const data = { ...filtered, bio };
+  const data = { wasser: wasserRaw, stadt: stadtRaw, bio };
 
   const totals = {
     wasser: wasserRaw.length,
-    stadt: raw.stadt.length,
+    stadt: stadtRaw.length,
     bio: bio.length,
   };
 
   const bioStatus = { loading: bioQuery.isLoading, error: bioQuery.isError };
+  const wasserStatus = { loading: wasserQuery.isLoading, error: wasserQuery.isError };
 
   return (
     <FilterCtx.Provider
@@ -137,6 +125,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
         data,
         totals,
         bioStatus,
+        wasserStatus,
         lastUpdated,
       }}
     >

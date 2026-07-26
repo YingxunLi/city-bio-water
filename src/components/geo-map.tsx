@@ -42,6 +42,20 @@ function GeoMapInner({ points, height = 380, heat = false, flush = false }: Prop
   const L = useClientModule(() => import("leaflet"));
   const mapRef = useRef<any>(null);
 
+  // Keep the viewport fit to the active Kreis: re-center/zoom whenever the
+  // city or radius changes, instead of relying on the MapContainer's
+  // mount-only `zoom` prop (which never updates on radius-slider drags).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !L) return;
+    if (isGesamt) {
+      map.setView([city.lat, city.lon], 5);
+      return;
+    }
+    const bounds = L.latLng([city.lat, city.lon]).toBounds(radiusKm * 2000);
+    map.fitBounds(bounds, { padding: [24, 24], animate: false });
+  }, [L, city.id, city.lat, city.lon, radiusKm, isGesamt]);
+
   if (!RL || !L) {
     return (
       <div
@@ -52,7 +66,7 @@ function GeoMapInner({ points, height = 380, heat = false, flush = false }: Prop
   }
 
   const { MapContainer, TileLayer, CircleMarker, Circle, Tooltip } = RL;
-  const initialZoom = isGesamt ? 5 : 11;
+  const initialZoom = isGesamt ? 5 : 14;
 
   return (
     <div

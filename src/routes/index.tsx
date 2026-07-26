@@ -5,8 +5,7 @@ import { de } from "@/lib/i18n";
 import { FilterBar } from "@/components/filter-bar";
 import { GeoMap, type MapPoint } from "@/components/geo-map";
 import { MapDashboard, PanelTabs, PanelBody, FloatingCard } from "@/components/map-dashboard";
-import { TimeSeries, bucketByDay } from "@/components/time-series";
-import { fuColor, nestColor, avgValid } from "@/lib/mock-data";
+import { avgValid } from "@/lib/mock-data";
 import { Droplets, TreePine, Bird, ArrowUpRight } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -25,7 +24,7 @@ export const Route = createFileRoute("/")({
 type Tab = "quellen" | "stats";
 
 function HomePage() {
-  const { data, range } = useFilters();
+  const { data } = useFilters();
   const [tab, setTab] = useState<Tab>("quellen");
 
   const allPoints: MapPoint[] = [
@@ -44,11 +43,6 @@ function HomePage() {
   ];
 
   const total = data.wasser.length + data.stadt.length + data.bio.length;
-  const ts = {
-    wasser: bucketByDay(data.wasser, range),
-    stadt: bucketByDay(data.stadt, range),
-    bio: bucketByDay(data.bio, range),
-  };
   const avgFu = avgValid(data.wasser.map((d) => d.fu));
   const avgNestRaw = avgValid(data.stadt.map((d) => d.nest));
   const avgNest = avgNestRaw != null ? Math.round(avgNestRaw) : null;
@@ -83,29 +77,18 @@ function HomePage() {
                   icon={<Droplets className="size-4" style={{ color: "var(--wasser)" }} />}
                   label={de.nav.wasser} source="EyeOnWater"
                   count={data.wasser.length}
-                  metricLabel={`${de.wasser.fu} · Ø`}
-                  metricValue={avgFu != null ? avgFu.toFixed(1) : "—"}
-                  metricSwatch={avgFu != null ? fuColor(avgFu) : undefined}
-                  ts={ts.wasser}
                 />
                 <CategoryCard
                   href="https://www.parkli.de/stadt" accent="var(--stadt)"
                   icon={<TreePine className="size-4" style={{ color: "var(--stadt)" }} />}
                   label={de.nav.stadt} source="Greenspace Hack"
                   count={data.stadt.length}
-                  metricLabel={`${de.stadt.nest} · Ø`}
-                  metricValue={avgNest != null ? avgNest : "—"}
-                  metricSwatch={avgNest != null ? nestColor(avgNest) : undefined}
-                  ts={ts.stadt}
                 />
                 <CategoryCard
                   href="https://www.parkli.de/biodiversitaet" accent="var(--bio)"
                   icon={<Bird className="size-4" style={{ color: "var(--bio)" }} />}
                   label={de.nav.bio} source="iNaturalist"
                   count={data.bio.length}
-                  metricLabel={de.bio.species}
-                  metricValue={uniqSpecies}
-                  ts={ts.bio}
                 />
               </div>
             )}
@@ -146,11 +129,10 @@ function Legend({ dot, label }: { dot: string; label: string }) {
 }
 
 function CategoryCard({
-  href, accent, icon, label, source, count, metricLabel, metricValue, metricSwatch, ts,
+  href, accent, icon, label, source, count,
 }: {
   href: string; accent: string; icon: React.ReactNode; label: string; source: string;
-  count: number; metricLabel: string; metricValue: React.ReactNode; metricSwatch?: string;
-  ts: { label: string; count: number }[];
+  count: number;
 }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-3 group relative overflow-hidden transition-shadow">
@@ -175,24 +157,10 @@ function CategoryCard({
           <ArrowUpRight className="size-4 text-muted-foreground" />
         </a>
       </div>
-      <div className="mt-2 flex items-end justify-between gap-3">
-        <div>
-          <div className="text-base font-semibold stat-number leading-none">{count.toLocaleString("de-DE")}</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">Beobachtungen</div>
-        </div>
-        <div className="text-right">
-          <div className="text-[10px] text-muted-foreground">{metricLabel}</div>
-          <div className="flex items-center gap-1.5 justify-end">
-            {metricSwatch && (
-              <span className="size-2.5 rounded-full border border-border" style={{ background: metricSwatch }} />
-            )}
-            <span className="text-2xl font-semibold stat-number leading-none">{metricValue}</span>
-          </div>
-        </div>
+      <div className="mt-3">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Beobachtungen</div>
+        <div className="mt-1 text-xl md:text-2xl font-semibold stat-number">{count.toLocaleString("de-DE")}</div>
       </div>
-      <div className="-mx-1 mt-1">
-        <TimeSeries data={ts} color={accent} height={48} />
-      </div>1
     </div>
   );
 }

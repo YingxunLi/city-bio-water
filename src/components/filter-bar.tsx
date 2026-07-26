@@ -2,7 +2,7 @@ import { useFilters, type TimeRange } from "@/lib/filter-context";
 import { de } from "@/lib/i18n";
 import { Slider } from "@/components/ui/slider";
 import { Clock, Radius, MapPin, ChevronRight, X } from "lucide-react";
-import { CityCombobox } from "@/components/city-combobox";
+import { CityInput } from "@/components/city-input";
 import React, { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
@@ -123,11 +123,10 @@ function CitySection() {
           {de.filters.city}
         </div>
 
-        {/* Combobox — dimmed when coord panel is open */}
+        {/* Freitext-Eingabe — dimmed when coord panel is open */}
         <div className={cn("transition-opacity", coordOpen && "opacity-40 pointer-events-none")}>
-          <CityCombobox
+          <CityInput
             cities={cities}
-            value={city.id}
             activeCity={city}
             onSelect={setCity}
             onCustom={addCustomCity}
@@ -232,8 +231,8 @@ export function FilterBar({ compact = false }: { compact?: boolean }) {
           <Slider
             value={[radiusKm]}
             min={1}
-            max={50}
-            step={1}
+            max={2}
+            step={0.1}
             onValueChange={(v) => setRadiusKm(v[0])}
             className="mt-1.5"
           />
