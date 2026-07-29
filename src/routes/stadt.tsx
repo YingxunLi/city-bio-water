@@ -156,7 +156,7 @@ function StadtPage() {
                     {de.common.observations} · {de.common.overTime}
                   </div>
                   <div className="flex-1 min-h-[160px]">
-                    <TimeSeries data={ts} color={STADT} height={undefined} />
+                    <TimeSeries data={ts} color={STADT} height="100%" />
                   </div>
                 </div>
               </div>

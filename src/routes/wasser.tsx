@@ -187,7 +187,7 @@ function WasserPage() {
                     {de.common.observations} · {de.common.overTime}
                   </div>
                   <div className="flex-1 min-h-[160px]">
-                    <TimeSeries data={ts} color={WASSER} height={undefined} />
+                    <TimeSeries data={ts} color={WASSER} height="100%" />
                   </div>
                 </div>
               </div>

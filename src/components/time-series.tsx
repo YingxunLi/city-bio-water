@@ -43,7 +43,7 @@ export function TimeSeries({
 }: {
   data: { label: string; count: number }[];
   color: string;
-  height?: number;
+  height?: number | string;
   yLabel?: string;
 }) {
   const id = useMemo(() => `g_${Math.random().toString(36).slice(2)}`, []);
